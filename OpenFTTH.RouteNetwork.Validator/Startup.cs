@@ -1,5 +1,6 @@
 ﻿using DAX.EventProcessing.Dispatcher;
 using DAX.EventProcessing.Dispatcher.Topos;
+using DAX.ObjectVersioning.Core;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
+using OpenFTTH.RouteNetwork.Validator.State;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -70,6 +72,7 @@ namespace OpenFTTH.RouteNetwork.Validator
                 
                 // Route network event consumer/dispatcher
                 services.AddSingleton<IToposTypedEventMediator<RouteNetworkEvent>, ToposTypedEventMediator<RouteNetworkEvent>>();
+                services.AddSingleton<InMemoryNetworkState>();
 
                 // Event handler
                 services.AddSingleton<RouteNetworkEventHandler>();

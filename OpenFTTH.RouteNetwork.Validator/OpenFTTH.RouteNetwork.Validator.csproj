@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="DAX.EventProcessing.Dispatcher" Version="1.0.3-alpha" />
-    <PackageReference Include="DAX.ObjectVersioning.Graph" Version="1.0.2-alpha" />
     <PackageReference Include="MediatR" Version="8.1.0" />
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="8.1.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.2" />
@@ -20,5 +19,10 @@
     <PackageReference Include="Serilog.Sinks.Debug" Version="1.0.1" />
     <PackageReference Include="Topos.Kafka" Version="0.0.72" />
     <PackageReference Include="Topos.Serilog" Version="0.0.72" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\csharp-util-object-versioning\DAX.ObjectVersioning.Core\DAX.ObjectVersioning.Core.csproj" />
+    <ProjectReference Include="..\..\csharp-util-object-versioning\DAX.ObjectVersioning.Graph\DAX.ObjectVersioning.Graph.csproj" />
   </ItemGroup>
 </Project>
