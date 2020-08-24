@@ -1,9 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using DAX.EventProcessing.Dispatcher;
+using DAX.EventProcessing.Dispatcher.Topos;
+using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
-using OpenFTTH.RouteNetwork.Validator.Consumers;
-using OpenFTTH.RouteNetwork.Validator.Consumers.Kafka;
+using OpenFTTH.RouteNetwork.Validator.Handlers;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -37,6 +40,7 @@ namespace OpenFTTH.RouteNetwork.Validator
         {
             Log.Logger = new LoggerConfiguration()
              .Enrich.FromLogContext()
+             .MinimumLevel.Verbose()
              .WriteTo.Console()
              .WriteTo.Debug()
              .CreateLogger();
@@ -60,7 +64,17 @@ namespace OpenFTTH.RouteNetwork.Validator
                                                hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
 
                 services.AddLogging();
-                services.AddSingleton<IGenericEventDispatcher, KafkaEventDispatcher>();
+
+                // MediatR
+                services.AddMediatR(typeof(Startup));
+                
+                // Route network event consumer/dispatcher
+                services.AddSingleton<IToposTypedEventMediator<RouteNetworkEvent>, ToposTypedEventMediator<RouteNetworkEvent>>();
+
+                // Event handler
+                services.AddSingleton<RouteNetworkEventHandler>();
+                
+                // The worker
                 services.AddHostedService<Worker>();
             });
         }

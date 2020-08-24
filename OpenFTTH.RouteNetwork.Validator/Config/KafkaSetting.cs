@@ -8,6 +8,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Config
     {
         public string Server { get; set; }
         public string PositionFilePath { get; set; }
-        public string DatafordelerTopic { get; set; }
+        public string RouteNetworkEventTopic { get; set; }
     }
 }

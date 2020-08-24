@@ -7,23 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DAX.EventProcessing.Dispatcher" Version="1.0.3-alpha" />
+    <PackageReference Include="DAX.ObjectVersioning.Graph" Version="1.0.2-alpha" />
     <PackageReference Include="MediatR" Version="8.1.0" />
+    <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="8.1.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.2" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.10" />
+    <PackageReference Include="OpenFTTH.Events" Version="1.0.7-alpha" />
     <PackageReference Include="Serilog" Version="2.9.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="1.0.1" />
     <PackageReference Include="Topos.Kafka" Version="0.0.72" />
     <PackageReference Include="Topos.Serilog" Version="0.0.72" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\csharp-util-event-processing\DAX.EventProcessing.Serialization\DAX.EventProcessing.Serialization.csproj" />
-    <ProjectReference Include="..\OpenFTTH.Events\OpenFTTH.Events.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Handlers\" />
   </ItemGroup>
 </Project>
