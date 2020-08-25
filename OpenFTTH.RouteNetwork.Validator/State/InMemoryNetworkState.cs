@@ -1,18 +1,24 @@
 ﻿using DAX.ObjectVersioning.Core;
 using Microsoft.Extensions.Logging;
 using OpenFTTH.Events.RouteNetwork.Infos;
+using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Model;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace OpenFTTH.RouteNetwork.Validator.State
 {
     public class InMemoryNetworkState
     {
-        private InMemoryObjectManager _objectManager = new InMemoryObjectManager();
-     
+        private string _routeValidationNotFeededTableName = "route_network_validator.element_not_feeded";
+
         private readonly ILogger<InMemoryNetworkState> _logger;
+
+        private readonly PostgressWriter _postgresWriter;
+
+        private InMemoryObjectManager _objectManager = new InMemoryObjectManager();
 
         private bool _loadMode = true;
 
@@ -23,9 +29,12 @@ namespace OpenFTTH.RouteNetwork.Validator.State
         private DateTime __lastEventRecievedTimestamp = DateTime.UtcNow;
         public DateTime LastEventRecievedTimestamp => __lastEventRecievedTimestamp;
 
-        public InMemoryNetworkState(ILogger<InMemoryNetworkState> logger)
+        private List<Guid> _lastIdsNotFeeded = new List<Guid>();
+
+        public InMemoryNetworkState(ILogger<InMemoryNetworkState> logger, PostgressWriter postgresWriter)
         {
             _logger = logger;
+            _postgresWriter = postgresWriter;
         }
 
         public ITransaction GetTransaction()
@@ -56,14 +65,24 @@ namespace OpenFTTH.RouteNetwork.Validator.State
             if (_loadMode && _loadModeTransaction != null)
                 return _loadModeTransaction.GetObject(id);
             else if (_cmdTransaction != null)
-                return _cmdTransaction.GetObject(id);
+            {
+                var transObj = _cmdTransaction.GetObject(id);
+
+                if (transObj != null)
+                    return transObj;
+                else
+                    return _objectManager.GetObject(id);
+            }
             else
                 return null;
         }
 
-        private void DoTrace()
+        private void DoTrace(bool initial = false)
         {
             _logger.LogInformation("Validating processing/tracing started...");
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             Dictionary<Guid, RouteNode> secondaryNodeLookup = new Dictionary<Guid, RouteNode>();
 
@@ -101,11 +120,52 @@ namespace OpenFTTH.RouteNetwork.Validator.State
 
             foreach (var networkObjectId in allNetworkObjectIds)
             {
-                if (!networkObjectsConnectedToSecondaryNodes.Contains(networkObjectId))
+                if (!networkObjectsConnectedToSecondaryNodes.Contains(networkObjectId) && !idsNotFeeded.Contains(networkObjectId))
                     idsNotFeeded.Add(networkObjectId);
             }
 
-            _logger.LogInformation($"Validating processing/tracing finish. {idsNotFeeded.Count} out of {allNetworkObjectIds.Count} route network elements was not feeded.");
+            stopwatch.Stop();
+            
+            _logger.LogInformation($"Validating processing/tracing finish. Elapsed time: {stopwatch.Elapsed.ToString("mm\\:ss\\.ff")}");
+            _logger.LogInformation($"Analysis result: {idsNotFeeded.Count} out of {allNetworkObjectIds.Count} route network elements were not feeded/connected to a central office.");
+
+            stopwatch.Start();
+
+            _logger.LogInformation($"Writing analysis result to database started...");
+            if (initial)
+            {
+                _postgresWriter.TruncateAndWriteGuidsToTable(_routeValidationNotFeededTableName, idsNotFeeded);
+                _lastIdsNotFeeded = idsNotFeeded;
+            }
+            else
+            {
+                List<Guid> idsToBeDeleted = new List<Guid>();
+                List<Guid> idsToBeAdded = new List<Guid>();
+
+                // Find ids to delete
+                foreach (var lastId in _lastIdsNotFeeded)
+                {
+                    if (!idsNotFeeded.Contains(lastId))
+                        idsToBeDeleted.Add(lastId);
+                }
+
+                // Find ids to add
+                foreach (var id in idsNotFeeded)
+                {
+                    if (!_lastIdsNotFeeded.Contains(id))
+                        idsToBeAdded.Add(id);
+                }
+
+                _postgresWriter.DeleteGuidsFromTable(_routeValidationNotFeededTableName, idsToBeDeleted);
+                _postgresWriter.AddGuidsToTable(_routeValidationNotFeededTableName, idsToBeAdded);
+
+                _lastIdsNotFeeded = idsNotFeeded;
+            }
+
+            stopwatch.Stop();
+            _logger.LogInformation($"Writing analysis result to database finish. Elapsed time: {stopwatch.Elapsed.ToString("mm\\:ss\\.ff")}");
+
+
         }
 
 
@@ -114,6 +174,8 @@ namespace OpenFTTH.RouteNetwork.Validator.State
             _loadMode = false;
             _loadModeTransaction.Commit();
             _loadModeTransaction = null;
+
+            DoTrace(true);
         }
 
         private ITransaction GetLoadModeTransaction()

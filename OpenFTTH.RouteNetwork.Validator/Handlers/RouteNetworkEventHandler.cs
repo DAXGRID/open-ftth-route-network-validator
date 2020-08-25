@@ -20,12 +20,15 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
         IRequestHandler<RouteSegmentAdded>,
         IRequestHandler<RouteNodeMarkedForDeletion>,
         IRequestHandler<RouteSegmentMarkedForDeletion>,
+        IRequestHandler<RouteSegmentRemoved>,
         IRequestHandler<RouteNodeGeometryModified>,
         IRequestHandler<RouteSegmentGeometryModified>
     {
         private readonly ILogger<RouteNetworkEventHandler> _logger;
 
         private InMemoryNetworkState _inMemoryNetworkState;
+
+        private HashSet<Guid> _alreadyProcessed = new HashSet<Guid>();
 
         public RouteNetworkEventHandler(ILogger<RouteNetworkEventHandler> logger, InMemoryNetworkState inMemoryNetworkState)
         {
@@ -36,7 +39,10 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
         public Task<Unit> Handle(RouteNodeAdded request, CancellationToken cancellationToken)
         {
-            _logger.LogDebug($"Handler got {request.GetType().Name} event.");
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return Unit.Task;
 
             var trans = _inMemoryNetworkState.GetTransaction();
 
@@ -49,7 +55,10 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
         public Task<Unit> Handle(RouteSegmentAdded request, CancellationToken cancellationToken)
         {
-            _logger.LogDebug($"Handler got {request.GetType().Name} event.");
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return Unit.Task;
 
             var trans = _inMemoryNetworkState.GetTransaction();
 
@@ -72,22 +81,70 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
         public Task<Unit> Handle(RouteSegmentMarkedForDeletion request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return Unit.Task;
+
+            var trans = _inMemoryNetworkState.GetTransaction();
+
+            trans.Delete(request.SegmentId);
+
+            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
+
+            return Unit.Task;
         }
+
+        public Task<Unit> Handle(RouteSegmentRemoved request, CancellationToken cancellationToken)
+        {
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return Unit.Task;
+
+            var trans = _inMemoryNetworkState.GetTransaction();
+
+            trans.Delete(request.SegmentId);
+
+            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
+
+            return Unit.Task;
+        }
+
 
         public Task<Unit> Handle(RouteNodeMarkedForDeletion request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return Unit.Task;
+
+            var trans = _inMemoryNetworkState.GetTransaction();
+
+            trans.Delete(request.NodeId);
+
+            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
+
+            return Unit.Task;
         }
 
         public Task<Unit> Handle(RouteNodeGeometryModified request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return Unit.Task;
         }
 
         public Task<Unit> Handle(RouteSegmentGeometryModified request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return Unit.Task;
+        }
+
+
+        private bool AlreadyProcessed(Guid id)
+        {
+            if (_alreadyProcessed.Contains(id))
+                return true;
+            else
+                return false;
         }
     }
 }

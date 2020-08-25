@@ -36,34 +36,42 @@ namespace OpenFTTH.RouteNetwork.Validator
         {
             _logger.LogInformation("Starting route network event consumer worker at: {time}", DateTimeOffset.Now);
 
-            _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c => c.UseKafka(_kafkaSetting.Value.Server))
-                          .Logging(l => l.UseSerilog())
-                          .Positions(p => p.StoreInMemory(_positionsStorage))
-                          .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic))
-                          .Start();
-
-            // Wait for load mode to create an initial version/state
-
-            _logger.LogInformation("Starting load mode...");
-            bool loadFinish = false;
-            while (!stoppingToken.IsCancellationRequested && !loadFinish)
+            try
             {
-                _logger.LogDebug("Waiting for load mode to finish creating initial state...");
 
-                DateTime waitStartTimestamp = DateTime.UtcNow;
+                _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c => c.UseKafka(_kafkaSetting.Value.Server))
+                              .Logging(l => l.UseSerilog())
+                              .Positions(p => p.StoreInMemory(_positionsStorage))
+                              .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic))
+                              .Start();
 
-                await Task.Delay(5000, stoppingToken);
+                // Wait for load mode to create an initial version/state
 
-                TimeSpan timespan = waitStartTimestamp - _inMemoryNetworkState.LastEventRecievedTimestamp;
-
-                if (timespan.TotalSeconds > 10)
+                _logger.LogInformation("Starting load mode...");
+                bool loadFinish = false;
+                while (!stoppingToken.IsCancellationRequested && !loadFinish)
                 {
-                    loadFinish = true;
-                }
-            }
+                    _logger.LogDebug("Waiting for load mode to finish creating initial state...");
 
-            _inMemoryNetworkState.FinishLoadMode();
-            _logger.LogInformation("Loading of initial state finished.");
+                    DateTime waitStartTimestamp = DateTime.UtcNow;
+
+                    await Task.Delay(5000, stoppingToken);
+
+                    TimeSpan timespan = waitStartTimestamp - _inMemoryNetworkState.LastEventRecievedTimestamp;
+
+                    if (timespan.TotalSeconds > 10)
+                    {
+                        loadFinish = true;
+                    }
+                }
+
+                _inMemoryNetworkState.FinishLoadMode();
+                _logger.LogInformation("Loading of initial state finished.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message, ex);
+            }
         }
     }
 }

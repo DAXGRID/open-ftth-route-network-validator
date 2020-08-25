@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
+using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
 using OpenFTTH.RouteNetwork.Validator.State;
 using Serilog;
@@ -76,7 +77,9 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 // Event handler
                 services.AddSingleton<RouteNetworkEventHandler>();
-                
+
+                services.AddSingleton<PostgressWriter>();
+
                 // The worker
                 services.AddHostedService<Worker>();
             });
