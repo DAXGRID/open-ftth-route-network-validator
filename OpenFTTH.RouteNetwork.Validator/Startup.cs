@@ -43,7 +43,7 @@ namespace OpenFTTH.RouteNetwork.Validator
         {
             Log.Logger = new LoggerConfiguration()
              .Enrich.FromLogContext()
-             .MinimumLevel.Verbose()
+             .MinimumLevel.Information()
              .WriteTo.Console()
              .WriteTo.Debug()
              .CreateLogger();

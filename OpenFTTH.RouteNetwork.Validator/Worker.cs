@@ -53,6 +53,8 @@ namespace OpenFTTH.RouteNetwork.Validator
                 {
                     _logger.LogDebug("Waiting for load mode to finish creating initial state...");
 
+                    _logger.LogInformation($"{_inMemoryNetworkState.NumberOfObjectsLoaded} objects loaded.");
+
                     DateTime waitStartTimestamp = DateTime.UtcNow;
 
                     await Task.Delay(5000, stoppingToken);

@@ -31,6 +31,9 @@ namespace OpenFTTH.RouteNetwork.Validator.State
 
         private List<Guid> _lastIdsNotFeeded = new List<Guid>();
 
+        private long _numberOfObjectsLoaded = 0;
+        public long NumberOfObjectsLoaded => _numberOfObjectsLoaded;
+
         public InMemoryNetworkState(ILogger<InMemoryNetworkState> logger, PostgressWriter postgresWriter)
         {
             _logger = logger;
@@ -48,6 +51,7 @@ namespace OpenFTTH.RouteNetwork.Validator.State
         public void FinishWithTransaction(bool lastEventInCommand)
         {
             __lastEventRecievedTimestamp = DateTime.UtcNow;
+            _numberOfObjectsLoaded++;
 
             // We're our of load mode, and dealing with last event
             if (!_loadMode && _loadModeTransaction == null && lastEventInCommand)
@@ -172,7 +176,10 @@ namespace OpenFTTH.RouteNetwork.Validator.State
         public void FinishLoadMode()
         {
             _loadMode = false;
-            _loadModeTransaction.Commit();
+
+            if (_loadModeTransaction != null)
+                _loadModeTransaction.Commit();
+
             _loadModeTransaction = null;
 
             DoTrace(true);
