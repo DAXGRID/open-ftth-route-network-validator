@@ -1,20 +1,20 @@
-#See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/core/runtime:3.1-buster-slim AS base
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
-WORKDIR /src
-COPY ["OpenFTTH.RouteNetwork.Validator/OpenFTTH.RouteNetwork.Validator.csproj", "OpenFTTH.RouteNetwork.Validator/"]
-RUN dotnet restore "OpenFTTH.RouteNetwork.Validator/OpenFTTH.RouteNetwork.Validator.csproj"
-COPY . .
-WORKDIR "/src/OpenFTTH.RouteNetwork.Validator"
-RUN dotnet build "OpenFTTH.RouteNetwork.Validator.csproj" -c Release -o /app/build
+COPY ./*sln ./
 
-FROM build AS publish
-RUN dotnet publish "OpenFTTH.RouteNetwork.Validator.csproj" -c Release -o /app/publish
+COPY ./OpenFTTH.RouteNetwork.Validator/*.csproj ./OpenFTTH.RouteNetwork.Validator/
+COPY ./OpenFTTH.Events/*.csproj ./OpenFTTH.Events/
 
-FROM base AS final
+RUN dotnet restore --packages ./packages
+
+COPY . ./
+WORKDIR /app/OpenFTTH.RouteNetwork.Validator
+RUN dotnet publish -c Release -o out --packages ./packages
+
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/core/runtime:3.1
 WORKDIR /app
-COPY --from=publish /app/publish .
+
+COPY --from=build-env /app/OpenFTTH.RouteNetwork.Validator/out .
 ENTRYPOINT ["dotnet", "OpenFTTH.RouteNetwork.Validator.dll"]
