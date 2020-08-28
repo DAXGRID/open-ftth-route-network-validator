@@ -4,7 +4,6 @@ WORKDIR /app
 COPY ./*sln ./
 
 COPY ./OpenFTTH.RouteNetwork.Validator/*.csproj ./OpenFTTH.RouteNetwork.Validator/
-COPY ./OpenFTTH.Events/*.csproj ./OpenFTTH.Events/
 
 RUN dotnet restore --packages ./packages
 
