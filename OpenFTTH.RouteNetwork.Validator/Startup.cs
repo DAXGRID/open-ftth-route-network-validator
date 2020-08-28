@@ -43,11 +43,13 @@ namespace OpenFTTH.RouteNetwork.Validator
 
         private static void ConfigureLogging(IHostBuilder hostBuilder)
         {
-            var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", true, false)
+                .AddEnvironmentVariables().Build();
 
             Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(configuration)
-            .CreateLogger();
+                .ReadFrom.Configuration(configuration)
+                .CreateLogger();
 
             hostBuilder.ConfigureServices((hostContext, services) =>
             {
@@ -80,7 +82,7 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 // MediatR
                 services.AddMediatR(typeof(Startup));
-                
+
                 // Route network event consumer/dispatcher
                 services.AddSingleton<IToposTypedEventMediator<RouteNetworkEvent>, ToposTypedEventMediator<RouteNetworkEvent>>();
                 services.AddSingleton<InMemoryNetworkState>();
