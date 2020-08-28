@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,6 +70,9 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 _inMemoryNetworkState.FinishLoadMode();
                 _logger.LogInformation("Loading of initial state finished.");
+
+                // We are now ready to serve the public
+                File.Create("/tmp/healthy");
             }
             catch (Exception ex)
             {

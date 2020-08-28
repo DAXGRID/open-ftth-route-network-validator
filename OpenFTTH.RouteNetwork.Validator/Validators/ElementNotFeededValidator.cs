@@ -35,7 +35,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
             _postgresWriter.CreateIdTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, transaction);
         }
 
-        public void Validate(bool initial)
+        public void Validate(bool initial, IDbTransaction trans)
         {
             _logger.LogInformation($"{this.GetType().Name} started a network trace...");
 
@@ -84,7 +84,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
 
             stopwatch.Stop();
 
-            _logger.LogInformation($"{this.GetType().Name} finish tracing. Elapsed time: {stopwatch.Elapsed.ToString("mm\\:ss\\.ff")}");
+            _logger.LogInformation($"{this.GetType().Name} finish tracing. Elapsed time: {stopwatch.Elapsed.Milliseconds} milliseconds.");
             _logger.LogInformation($"{this.GetType().Name} analysis result: {idsNotFeeded.Count} out of {allNetworkObjectIds.Count} route network elements were not feeded/connected to a central office.");
 
             stopwatch.Start();
@@ -93,7 +93,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
 
             if (initial)
             {
-                _postgresWriter.TruncateAndWriteGuidsToTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, idsNotFeeded);
+                _postgresWriter.TruncateAndWriteGuidsToTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, idsNotFeeded, trans);
                 _lastIdsNotFeeded = idsNotFeeded;
             }
             else
@@ -115,14 +115,13 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                         idsToBeAdded.Add(id);
                 }
 
-                _postgresWriter.DeleteGuidsFromTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, idsToBeDeleted);
-                _postgresWriter.AddGuidsToTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, idsToBeAdded);
+                _postgresWriter.TruncateAndWriteGuidsToTable(_databaseSetting.Value.Schema, _databaseSetting.Value.ElementNotFeededTableName, idsNotFeeded, trans);
 
                 _lastIdsNotFeeded = idsNotFeeded;
             }
 
             stopwatch.Stop();
-            _logger.LogInformation($"{this.GetType().Name} writing analysis result to database finish. Elapsed time: {stopwatch.Elapsed.ToString("mm\\:ss\\.ff")}");
+            _logger.LogInformation($"{this.GetType().Name} writing analysis result to database finish. Elapsed time: {stopwatch.Elapsed.Milliseconds} milliseconds.");
         }
     }
 }

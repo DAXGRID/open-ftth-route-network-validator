@@ -97,8 +97,10 @@ namespace OpenFTTH.RouteNetwork.Validator.State
                         // Do initial validation
                         foreach (var validator in validators)
                         {
-                            validator.Validate(true);
+                            validator.Validate(true, trans);
                         }
+
+                        trans.Commit();
                     }
                 }
             }

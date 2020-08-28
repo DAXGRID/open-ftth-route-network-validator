@@ -58,33 +58,48 @@ namespace OpenFTTH.RouteNetwork.Validator.Database.Impl
             RunDbCommand(transaction, createTableCmdText);
         }
 
-        public void TruncateAndWriteGuidsToTable(string schemaName, string tableName, IEnumerable<Guid> guids)
+        public void TruncateAndWriteGuidsToTable(string schemaName, string tableName, IEnumerable<Guid> guids, IDbTransaction trans = null)
         {
-            using (var conn = GetConnection())
+            if (trans != null)
             {
-                conn.Open();
 
                 // Truncate the table
-                using (var truncateCmd = new NpgsqlCommand($"truncate table {schemaName}.{tableName}", (NpgsqlConnection)conn))
+                using (var truncateCmd = new NpgsqlCommand($"truncate table {schemaName}.{tableName}", (NpgsqlConnection)trans.Connection, (NpgsqlTransaction)trans))
                 {
                     truncateCmd.ExecuteNonQuery();
                 }
 
-                // Write guids to id
-                using (var trans = conn.BeginTransaction())
+                using (var writer = ((NpgsqlConnection)trans.Connection).BeginBinaryImport($"copy {schemaName}.{tableName} (networkElementId) from STDIN (FORMAT BINARY)"))
                 {
-                    using (var insertCmd = new NpgsqlCommand($"INSERT INTO {schemaName}.{tableName} (networkElementId) VALUES (@p)", (NpgsqlConnection)conn, (NpgsqlTransaction)trans))
+                    foreach (var guid in guids)
                     {
-                        var Idparam = insertCmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Uuid);
-
-                        foreach (var guid in guids)
-                        {
-                            Idparam.Value = guid;
-                            insertCmd.ExecuteNonQuery();
-                        }
+                        writer.WriteRow(guid);
                     }
 
-                    trans.Commit();
+                    writer.Complete();
+                }
+            }
+            else
+            {
+                using (var conn = GetConnection() as NpgsqlConnection)
+                {
+                    conn.Open();
+
+                    // Truncate the table
+                    using (var truncateCmd = new NpgsqlCommand($"truncate table {schemaName}.{tableName}", conn))
+                    {
+                        truncateCmd.ExecuteNonQuery();
+                    }
+
+                    using (var writer = conn.BeginBinaryImport($"copy {schemaName}.{tableName} (networkElementId) from STDIN (FORMAT BINARY)"))
+                    {
+                        foreach (var guid in guids)
+                        {
+                            writer.WriteRow(guid);
+                        }
+
+                        writer.Complete();
+                    }
                 }
             }
         }
