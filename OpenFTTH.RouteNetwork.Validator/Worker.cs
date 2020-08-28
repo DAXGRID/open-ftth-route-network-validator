@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DAX.EventProcessing.Dispatcher;
@@ -22,6 +20,7 @@ namespace OpenFTTH.RouteNetwork.Validator
         private readonly IOptions<KafkaSetting> _kafkaSetting;
         private readonly IToposTypedEventMediator<RouteNetworkEvent> _eventMediator;
         private readonly InMemoryNetworkState _inMemoryNetworkState;
+        private IDisposable _kafkaConsumer;
 
         private InMemPositionsStorage _positionsStorage = new InMemPositionsStorage();
 
@@ -39,15 +38,13 @@ namespace OpenFTTH.RouteNetwork.Validator
 
             try
             {
-
-                _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c => c.UseKafka(_kafkaSetting.Value.Server))
-                              .Logging(l => l.UseSerilog())
-                              .Positions(p => p.StoreInMemory(_positionsStorage))
-                              .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic))
-                              .Start();
+                _kafkaConsumer = _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c => c.UseKafka(_kafkaSetting.Value.Server))
+                             .Logging(l => l.UseSerilog())
+                             .Positions(p => p.StoreInMemory(_positionsStorage))
+                             .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic))
+                             .Start();
 
                 // Wait for load mode to create an initial version/state
-
                 _logger.LogInformation("Starting load mode...");
                 bool loadFinish = false;
                 while (!stoppingToken.IsCancellationRequested && !loadFinish)
@@ -71,13 +68,24 @@ namespace OpenFTTH.RouteNetwork.Validator
                 _inMemoryNetworkState.FinishLoadMode();
                 _logger.LogInformation("Loading of initial state finished.");
 
-                // We are now ready to serve the public
-                File.Create("/tmp/healthy");
+                // We are now ready to serve the public if the loaded objects are bigger than 0
+                if (_inMemoryNetworkState.NumberOfObjectsLoaded > 0)
+                    File.Create("/tmp/healthy");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
             }
+
+            await Task.CompletedTask;
+        }
+
+        public override async Task StopAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Stopping background worker");
+            _kafkaConsumer.Dispose();
+
+            await Task.CompletedTask;
         }
     }
 }
