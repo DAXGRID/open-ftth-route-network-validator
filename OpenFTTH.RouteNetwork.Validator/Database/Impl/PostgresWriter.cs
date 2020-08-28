@@ -11,17 +11,17 @@ namespace OpenFTTH.RouteNetwork.Validator.Database.Impl
     public class PostgresWriter
     {
         private readonly ILogger<PostgresWriter> _logger;
-        private readonly IOptions<DatabaseSetting> _databaseSetting;
+        private readonly DatabaseSetting _databaseSetting;
 
         public PostgresWriter(ILogger<PostgresWriter> logger, IOptions<DatabaseSetting> databaseSetting)
         {
             _logger = logger;
-            _databaseSetting = databaseSetting;
+            _databaseSetting = databaseSetting.Value;
         }
 
         public IDbConnection GetConnection()
         {
-            return new NpgsqlConnection(_databaseSetting.Value.ConnectionString);
+            return new NpgsqlConnection($"Host={_databaseSetting.Host};Port={_databaseSetting.Port};Username={_databaseSetting.Username};Password={_databaseSetting.Password};Database={_databaseSetting.Database}");
         }
 
 
