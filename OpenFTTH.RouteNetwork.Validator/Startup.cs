@@ -10,9 +10,11 @@ using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
 using OpenFTTH.RouteNetwork.Validator.State;
+using OpenFTTH.RouteNetwork.Validator.Validators;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace OpenFTTH.RouteNetwork.Validator
@@ -41,16 +43,22 @@ namespace OpenFTTH.RouteNetwork.Validator
 
         private static void ConfigureLogging(IHostBuilder hostBuilder)
         {
+            var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+
             Log.Logger = new LoggerConfiguration()
-             .Enrich.FromLogContext()
-             .MinimumLevel.Information()
-             .WriteTo.Console()
-             .WriteTo.Debug()
-             .CreateLogger();
+            .ReadFrom.Configuration(configuration)
+            .CreateLogger();
 
             hostBuilder.ConfigureServices((hostContext, services) =>
             {
-                services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true));
+                services.AddLogging(loggingBuilder =>
+                {
+                    var logger = new LoggerConfiguration()
+                        .ReadFrom.Configuration(configuration)
+                        .CreateLogger();
+
+                    loggingBuilder.AddSerilog(dispose: true);
+                });
             });
         }
 
@@ -68,6 +76,8 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 services.AddLogging();
 
+                services.AddSingleton<IServiceProvider, ServiceProvider>();
+
                 // MediatR
                 services.AddMediatR(typeof(Startup));
                 
@@ -78,7 +88,11 @@ namespace OpenFTTH.RouteNetwork.Validator
                 // Event handler
                 services.AddSingleton<RouteNetworkEventHandler>();
 
-                services.AddSingleton<PostgressWriter>();
+                // Database stuff
+                services.AddSingleton<PostgresWriter>();
+
+                // Validators
+                services.AddSingleton<IValidator, ElementNotFeededValidator>();
 
                 // The worker
                 services.AddHostedService<Worker>();
