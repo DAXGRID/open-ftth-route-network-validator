@@ -109,7 +109,7 @@ namespace OpenFTTH.RouteNetwork.Validator.State
                 // Do validation
                 foreach (var validator in validators)
                 {
-                    validator.Validate(true);
+                    validator.Validate(false);
                 }
             }
         }

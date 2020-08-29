@@ -9,6 +9,7 @@ using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
+using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using OpenFTTH.RouteNetwork.Validator.Validators;
 using Serilog;
@@ -83,8 +84,11 @@ namespace OpenFTTH.RouteNetwork.Validator
                 // MediatR
                 services.AddMediatR(typeof(Startup));
 
-                // Route network event consumer/dispatcher
+                // Kafka producer and consumer stuff
                 services.AddSingleton<IToposTypedEventMediator<RouteNetworkEvent>, ToposTypedEventMediator<RouteNetworkEvent>>();
+                services.AddSingleton<IProducer, Producer.Kafka.Producer>();
+
+                // In memory state manager
                 services.AddSingleton<InMemoryNetworkState>();
 
                 // Event handler

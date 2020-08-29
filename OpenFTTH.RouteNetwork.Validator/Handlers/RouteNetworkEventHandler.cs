@@ -46,7 +46,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
             var trans = _inMemoryNetworkState.GetTransaction();
 
-            trans.Add(new RouteNode(request.NodeId, request.RouteNodeInfo?.Function, request.NamingInfo?.Name));
+            var envelope = GeoJsonConversionHelper.ConvertFromPointGeoJson(request.Geometry).Envelope.EnvelopeInternal;
+
+            trans.Add(new RouteNode(request.NodeId, request.RouteNodeInfo?.Function, envelope, request.NamingInfo?.Name));
 
             _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
 
@@ -72,7 +74,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             if (toNode == null)
                 throw new DataMisalignedException($"Route network event stream seemd to be broken! RouteSegmentAdded event with id: {request.EventId} has a ToNodeId: {request.ToNodeId} that don't exists in the current state.");
 
-            trans.Add(new RouteSegment(request.SegmentId, fromNode, toNode));
+            var envelope = GeoJsonConversionHelper.ConvertFromLineGeoJson(request.Geometry).Envelope.EnvelopeInternal;
+
+            trans.Add(new RouteSegment(request.SegmentId, fromNode, toNode, envelope));
 
             _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
 
