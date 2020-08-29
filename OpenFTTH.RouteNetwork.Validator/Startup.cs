@@ -63,10 +63,6 @@ namespace OpenFTTH.RouteNetwork.Validator
                 .AddJsonFile("appsettings.json", true, false)
                 .AddEnvironmentVariables().Build();
 
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configuration)
-                .CreateLogger();
-
             hostBuilder.ConfigureServices((hostContext, services) =>
             {
                 services.AddLogging(loggingBuilder =>
@@ -75,7 +71,7 @@ namespace OpenFTTH.RouteNetwork.Validator
                         .ReadFrom.Configuration(configuration)
                         .CreateLogger();
 
-                    loggingBuilder.AddSerilog(dispose: true);
+                    loggingBuilder.AddSerilog(logger, true);
                 });
             });
         }
