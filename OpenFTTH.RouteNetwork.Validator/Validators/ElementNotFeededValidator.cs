@@ -15,6 +15,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace OpenFTTH.RouteNetwork.Validator.Validators
 {
@@ -138,7 +139,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
             _logger.LogInformation($"{this.GetType().Name} writing analysis result to database finish. Elapsed time: {stopwatch.Elapsed.Milliseconds} milliseconds.");
         }
 
-        private void PublishObjectsWithinGeographicalAreaUpdatedEvent(Dictionary<Guid, IRouteNetworkElement> addedElements, Dictionary<Guid, IRouteNetworkElement> deletedElements)
+        private async void PublishObjectsWithinGeographicalAreaUpdatedEvent(Dictionary<Guid, IRouteNetworkElement> addedElements, Dictionary<Guid, IRouteNetworkElement> deletedElements)
         {
             List<IdChangeSet> idChangeSets = new List<IdChangeSet>();
 
@@ -173,7 +174,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                     idChangeSets: idChangeSets.ToArray()
                 );
 
-            _eventProducer.Produce(_kafkaSetting.GeographicalAreaUpdatedTopic, graphicalObjectsUpdatedEvent);
+            
+
+            await _eventProducer.Produce(_kafkaSetting.GeographicalAreaUpdatedTopic, graphicalObjectsUpdatedEvent);
         }
     }
 }

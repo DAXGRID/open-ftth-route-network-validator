@@ -33,6 +33,10 @@ namespace OpenFTTH.RouteNetwork.Validator.Producer.Kafka
         public async Task Produce(string topicName, object toposMessage)
         {
             _logger.LogInformation($"Sending message topicname: {topicName} and body {JsonConvert.SerializeObject(toposMessage, Formatting.Indented)}");
+
+            if (_producer == null)
+                Init();
+
             await _producer.Send(topicName, new ToposMessage(toposMessage));
         }
 
