@@ -30,6 +30,7 @@ namespace OpenFTTH.RouteNetwork.Validator
             var hostBuilder = new HostBuilder();
 
             ConfigureApp(hostBuilder);
+            ConfigureSerialization(hostBuilder);
             ConfigureLogging(hostBuilder);
             ConfigureServices(hostBuilder);
 
@@ -43,6 +44,17 @@ namespace OpenFTTH.RouteNetwork.Validator
                 config.AddEnvironmentVariables();
                 config.AddJsonFile("appsettings.json", true, true);
             });
+        }
+
+        private static void ConfigureSerialization(IHostBuilder hostBuilder)
+        {
+            JsonConvert.DefaultSettings = (() =>
+               {
+                   var settings = new JsonSerializerSettings();
+                   settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                   settings.Converters.Add(new StringEnumConverter());
+                   return settings;
+               });
         }
 
         private static void ConfigureLogging(IHostBuilder hostBuilder)
@@ -70,16 +82,6 @@ namespace OpenFTTH.RouteNetwork.Validator
 
         public static void ConfigureServices(IHostBuilder hostBuilder)
         {
-            JsonConvert.DefaultSettings = (() =>
-            {
-                var settings = new JsonSerializerSettings();
-                settings.Converters.Add(new StringEnumConverter
-                {
-                    NamingStrategy = new CamelCaseNamingStrategy { OverrideSpecifiedNames = false }
-                });
-                return settings;
-            });
-
             hostBuilder.ConfigureServices((hostContext, services) =>
             {
                 services.AddOptions();
