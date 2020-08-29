@@ -150,12 +150,16 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
         {
             List<IdChangeSet> idChangeSets = new List<IdChangeSet>();
 
-            // NB: We don't have to deal with modifications, because the element not feeded validation just produces a list of route network element ids that are not feeded
-            if (addedElements.Count > 0)
-                idChangeSets.Add(new IdChangeSet("RouteElementNotFeeded", ChangeTypeEnum.Addition, addedElements.Keys.ToArray()));
+            // Only add ids, if less that 1000. This to prevent message size to big error in Kafka
+            if ((addedElements.Count + deletedElements.Count <= 1000))
+            {
+                // NB: We don't have to deal with modifications, because the element not feeded validation just produces a list of route network element ids that are not feeded
+                if (addedElements.Count > 0)
+                    idChangeSets.Add(new IdChangeSet("RouteElementNotFeeded", ChangeTypeEnum.Addition, addedElements.Keys.ToArray()));
 
-            if (deletedElements.Count > 0)
-                idChangeSets.Add(new IdChangeSet("RouteElementNotFeeded", ChangeTypeEnum.Deletion, deletedElements.Keys.ToArray()));
+                if (deletedElements.Count > 0)
+                    idChangeSets.Add(new IdChangeSet("RouteElementNotFeeded", ChangeTypeEnum.Deletion, deletedElements.Keys.ToArray()));
+            }
 
             // Create an envelop that covers all route network elements that have either added og deleted by the validation logic
             Envelope env = new Envelope();
