@@ -126,11 +126,18 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                         elementsToBeAdded.Add(addedElement.Id, addedElement);
                 }
 
-                // We just truncate and write all the ids to the table, because it's faster than doing individual add and delete stmts
-                _postgresWriter.TruncateAndWriteGuidsToTable(_databaseSetting.Schema, _databaseSetting.ElementNotFeededTableName, elementsNotConnectedToSecondaryNode.Keys, trans);
+                if (elementsToBeAdded.Count == 0 && elementsToBeDeleted.Count == 0)
+                {
+                    _logger.LogInformation($"{this.GetType().Name} No change compared to last validation - regarding which route network elements are feeded or not. Will therefore not send ObjectsWithinGeographicalAreaUpdated event or update database.");
+                }
+                else
+                {
+                    // We just truncate and write all the ids to the table, because it's faster than doing individual add and delete stmts
+                    _postgresWriter.TruncateAndWriteGuidsToTable(_databaseSetting.Schema, _databaseSetting.ElementNotFeededTableName, elementsNotConnectedToSecondaryNode.Keys, trans);
 
-                // Publish an event telling what elements that have been affected by validation
-                PublishObjectsWithinGeographicalAreaUpdatedEvent(elementsToBeAdded, elementsToBeDeleted);
+                    // Publish an event telling what elements that have been affected by validation
+                    PublishObjectsWithinGeographicalAreaUpdatedEvent(elementsToBeAdded, elementsToBeDeleted);
+                }
 
                 _lastNetworkElementsNotFeeded = elementsNotConnectedToSecondaryNode;
             }
