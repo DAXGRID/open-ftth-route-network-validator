@@ -5,6 +5,9 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
@@ -67,6 +70,16 @@ namespace OpenFTTH.RouteNetwork.Validator
 
         public static void ConfigureServices(IHostBuilder hostBuilder)
         {
+            JsonConvert.DefaultSettings = (() =>
+            {
+                var settings = new JsonSerializerSettings();
+                settings.Converters.Add(new StringEnumConverter
+                {
+                    NamingStrategy = new CamelCaseNamingStrategy { OverrideSpecifiedNames = false }
+                });
+                return settings;
+            });
+
             hostBuilder.ConfigureServices((hostContext, services) =>
             {
                 services.AddOptions();
