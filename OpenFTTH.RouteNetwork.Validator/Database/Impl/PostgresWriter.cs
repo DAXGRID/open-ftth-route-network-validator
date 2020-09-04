@@ -51,7 +51,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Database.Impl
         /// <param name="transaction"></param>
         public void CreateIdTable(string schemaName, string tableName, IDbTransaction transaction = null)
         {
-            string createTableCmdText = $"CREATE TABLE {schemaName}.{tableName} (networkElementId uuid, PRIMARY KEY(networkElementId));";
+            string createTableCmdText = $"CREATE UNLOGGED TABLE {schemaName}.{tableName} (networkElementId uuid, PRIMARY KEY(networkElementId));";
 
             _logger.LogDebug($"Execute SQL: {createTableCmdText}");
 

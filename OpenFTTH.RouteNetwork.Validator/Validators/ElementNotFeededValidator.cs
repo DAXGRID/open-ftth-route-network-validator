@@ -185,8 +185,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                     idChangeSets: idChangeSets.ToArray()
                 );
 
-            
-
             await _eventProducer.Produce(_kafkaSetting.GeographicalAreaUpdatedTopic, graphicalObjectsUpdatedEvent);
         }
     }
