@@ -68,18 +68,16 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
             if (fromNode == null)
             {
-                _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} has a FromNodeId: {request.FromNodeId} that don't exists in the current state.");
+                _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} and segment id: {request.SegmentId} has a FromNodeId: {request.FromNodeId} that don't exists in the current state.");
                 return Unit.Task;
-                //throw new DataMisalignedException($"Route network event stream seemd to be broken! RouteSegmentAdded event with id: {request.EventId} has a FromNodeId: {request.FromNodeId} that don't exists in the current state.");
             }
 
             var toNode = _inMemoryNetworkState.GetObject(request.ToNodeId) as RouteNode;
 
             if (toNode == null)
             {
-                _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} has a ToNodeId: {request.ToNodeId} that don't exists in the current state.");
+                _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} and segment id: {request.SegmentId} has a ToNodeId: {request.ToNodeId} that don't exists in the current state.");
                 return Unit.Task;
-                //throw new DataMisalignedException($"Route network event stream seemd to be broken! RouteSegmentAdded event with id: {request.EventId} has a ToNodeId: {request.ToNodeId} that don't exists in the current state.");
             }
 
             var envelope = GeoJsonConversionHelper.ConvertFromLineGeoJson(request.Geometry).Envelope.EnvelopeInternal;
@@ -156,7 +154,10 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             if (_alreadyProcessed.Contains(id))
                 return true;
             else
+            {
+                _alreadyProcessed.Add(id);
                 return false;
+            }
         }
     }
 }
