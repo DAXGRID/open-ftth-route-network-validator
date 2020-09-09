@@ -21,6 +21,7 @@
     <PackageReference Include="Serilog.Settings.Configuration" Version="3.1.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="1.0.1" />
+    <PackageReference Include="Serilog.Formatting.Compact" Version="1.1.0" />
     <PackageReference Include="Topos.Kafka" Version="0.0.72" />
     <PackageReference Include="Topos.NewtonsoftJson" Version="0.0.73" />
     <PackageReference Include="Topos.Serilog" Version="0.0.72" />
