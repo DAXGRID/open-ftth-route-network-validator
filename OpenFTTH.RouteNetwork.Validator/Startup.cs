@@ -16,10 +16,8 @@ using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using OpenFTTH.RouteNetwork.Validator.Validators;
 using Serilog;
+using Serilog.Formatting.Compact;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace OpenFTTH.RouteNetwork.Validator
 {
@@ -59,7 +57,7 @@ namespace OpenFTTH.RouteNetwork.Validator
 
         private static void ConfigureLogging(IHostBuilder hostBuilder)
         {
-            var configuration = new ConfigurationBuilder()
+            var loggingConfiguration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, false)
                 .AddEnvironmentVariables().Build();
 
@@ -68,7 +66,9 @@ namespace OpenFTTH.RouteNetwork.Validator
                 services.AddLogging(loggingBuilder =>
                 {
                     var logger = new LoggerConfiguration()
-                        .ReadFrom.Configuration(configuration)
+                        .ReadFrom.Configuration(loggingConfiguration)
+                        .Enrich.FromLogContext()
+                        .WriteTo.Console(new CompactJsonFormatter())
                         .CreateLogger();
 
                     loggingBuilder.AddSerilog(logger, true);
