@@ -51,6 +51,7 @@ namespace OpenFTTH.RouteNetwork.Validator
                    var settings = new JsonSerializerSettings();
                    settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                    settings.Converters.Add(new StringEnumConverter());
+                   settings.TypeNameHandling = TypeNameHandling.Auto;
                    return settings;
                });
         }
