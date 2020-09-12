@@ -96,7 +96,7 @@ namespace OpenFTTH.RouteNetwork.Validator
                 services.AddMediatR(typeof(Startup));
 
                 // Kafka producer and consumer stuff
-                services.AddSingleton<IToposTypedEventMediator<RouteNetworkEvent>, ToposTypedEventMediator<RouteNetworkEvent>>();
+                services.AddSingleton<IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent>, ToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent>>();
                 services.AddSingleton<IProducer, Producer.Kafka.Producer>();
 
                 // In memory state manager

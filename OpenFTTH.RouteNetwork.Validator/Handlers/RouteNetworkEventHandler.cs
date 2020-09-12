@@ -16,13 +16,7 @@ using System.Threading.Tasks;
 namespace OpenFTTH.RouteNetwork.Validator.Handlers
 {
     public class RouteNetworkEventHandler :
-        IRequestHandler<RouteNodeAdded>,
-        IRequestHandler<RouteSegmentAdded>,
-        IRequestHandler<RouteNodeMarkedForDeletion>,
-        IRequestHandler<RouteSegmentMarkedForDeletion>,
-        IRequestHandler<RouteSegmentRemoved>,
-        IRequestHandler<RouteNodeGeometryModified>,
-        IRequestHandler<RouteSegmentGeometryModified>
+        IRequestHandler<RouteNetworkEditOperationOccuredEvent>
     {
         private readonly ILogger<RouteNetworkEventHandler> _logger;
 
@@ -36,118 +30,120 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             _inMemoryNetworkState = inMemoryNetworkState;
         }
 
-
-        public Task<Unit> Handle(RouteNodeAdded request, CancellationToken cancellationToken)
+        public Task<Unit> Handle(RouteNetworkEditOperationOccuredEvent request, CancellationToken cancellationToken)
         {
-            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
-
-            if (AlreadyProcessed(request.EventId))
-                return Unit.Task;
-
             var trans = _inMemoryNetworkState.GetTransaction();
 
-            var envelope = GeoJsonConversionHelper.ConvertFromPointGeoJson(request.Geometry).Envelope.EnvelopeInternal;
+            if (request.RouteNetworkCommands != null)
+            {
+                foreach (var command in request.RouteNetworkCommands)
+                {
+                    if (command.RouteNetworkEvents != null)
+                    {
+                        foreach (var routeNetworkEvent in command.RouteNetworkEvents)
+                        {
+                            switch (routeNetworkEvent)
+                            {
+                                case RouteNodeAdded domainEvent:
+                                    HandleEvent(domainEvent, trans);
+                                    break;
 
-            trans.Add(new RouteNode(request.NodeId, request.RouteNodeInfo?.Function, envelope, request.NamingInfo?.Name), ignoreDublicates: true);
+                                case RouteNodeMarkedForDeletion domainEvent:
+                                    HandleEvent(domainEvent, trans);
+                                    break;
 
-            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
+                                case RouteSegmentAdded domainEvent:
+                                    HandleEvent(domainEvent, trans);
+                                    break;
+
+                                case RouteSegmentMarkedForDeletion domainEvent:
+                                    HandleEvent(domainEvent, trans);
+                                    break;
+
+                                case RouteSegmentRemoved domainEvent:
+                                    HandleEvent(domainEvent, trans);
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            _inMemoryNetworkState.FinishWithTransaction();
 
             return Unit.Task;
         }
 
-        public Task<Unit> Handle(RouteSegmentAdded request, CancellationToken cancellationToken)
+
+        private void HandleEvent(RouteNodeAdded request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
             if (AlreadyProcessed(request.EventId))
-                return Unit.Task;
+                return;
 
-            var trans = _inMemoryNetworkState.GetTransaction();
+            var envelope = GeoJsonConversionHelper.ConvertFromPointGeoJson(request.Geometry).Envelope.EnvelopeInternal;
 
-            var fromNode = _inMemoryNetworkState.GetObject(request.FromNodeId) as RouteNode;
+            transaction.Add(new RouteNode(request.NodeId, request.RouteNodeInfo?.Function, envelope, request.NamingInfo?.Name), ignoreDublicates: true);
+        }
 
-            if (fromNode == null)
+        private void HandleEvent(RouteSegmentAdded request, ITransaction transaction)
+        {
+            _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
+
+            if (AlreadyProcessed(request.EventId))
+                return;
+
+
+            if (!(_inMemoryNetworkState.GetObject(request.FromNodeId) is RouteNode fromNode))
             {
                 _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} and segment id: {request.SegmentId} has a FromNodeId: {request.FromNodeId} that don't exists in the current state.");
-                return Unit.Task;
+                return;
             }
 
-            var toNode = _inMemoryNetworkState.GetObject(request.ToNodeId) as RouteNode;
 
-            if (toNode == null)
+            if (!(_inMemoryNetworkState.GetObject(request.ToNodeId) is RouteNode toNode))
             {
                 _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} and segment id: {request.SegmentId} has a ToNodeId: {request.ToNodeId} that don't exists in the current state.");
-                return Unit.Task;
+                return;
             }
 
             var envelope = GeoJsonConversionHelper.ConvertFromLineGeoJson(request.Geometry).Envelope.EnvelopeInternal;
 
-            trans.Add(new RouteSegment(request.SegmentId, fromNode, toNode, envelope), ignoreDublicates: true);
-
-            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
-
-            return Unit.Task;
+            transaction.Add(new RouteSegment(request.SegmentId, fromNode, toNode, envelope), ignoreDublicates: true);
         }
 
-        public Task<Unit> Handle(RouteSegmentMarkedForDeletion request, CancellationToken cancellationToken)
+        private void HandleEvent(RouteSegmentMarkedForDeletion request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
             if (AlreadyProcessed(request.EventId))
-                return Unit.Task;
+                return;
 
-            var trans = _inMemoryNetworkState.GetTransaction();
-
-            trans.Delete(request.SegmentId, ignoreDublicates: true);
-
-            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
-
-            return Unit.Task;
+            transaction.Delete(request.SegmentId, ignoreDublicates: true);
         }
 
-        public Task<Unit> Handle(RouteSegmentRemoved request, CancellationToken cancellationToken)
+        private void HandleEvent(RouteSegmentRemoved request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
             if (AlreadyProcessed(request.EventId))
-                return Unit.Task;
-
-            var trans = _inMemoryNetworkState.GetTransaction();
-
-            trans.Delete(request.SegmentId, ignoreDublicates: true);
-
-            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
-
-            return Unit.Task;
+                return;
+       
+            transaction.Delete(request.SegmentId, ignoreDublicates: true);
         }
 
 
-        public Task<Unit> Handle(RouteNodeMarkedForDeletion request, CancellationToken cancellationToken)
+        private void HandleEvent(RouteNodeMarkedForDeletion request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
             if (AlreadyProcessed(request.EventId))
-                return Unit.Task;
+                return;
 
-            var trans = _inMemoryNetworkState.GetTransaction();
-
-            trans.Delete(request.NodeId, ignoreDublicates: true);
-
-            _inMemoryNetworkState.FinishWithTransaction(request.IsLastEventInCmd);
-
-            return Unit.Task;
+            transaction.Delete(request.NodeId, ignoreDublicates: true);
         }
-
-        public Task<Unit> Handle(RouteNodeGeometryModified request, CancellationToken cancellationToken)
-        {
-            return Unit.Task;
-        }
-
-        public Task<Unit> Handle(RouteSegmentGeometryModified request, CancellationToken cancellationToken)
-        {
-            return Unit.Task;
-        }
-
+       
 
         private bool AlreadyProcessed(Guid id)
         {

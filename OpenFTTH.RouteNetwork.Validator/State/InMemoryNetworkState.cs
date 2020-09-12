@@ -56,13 +56,13 @@ namespace OpenFTTH.RouteNetwork.Validator.State
                 return GetCommandTransaction();
         }
 
-        public void FinishWithTransaction(bool lastEventInCommand)
+        public void FinishWithTransaction()
         {
             __lastEventRecievedTimestamp = DateTime.UtcNow;
             _numberOfObjectsLoaded++;
 
             // We're our of load mode, and dealing with last event
-            if (!_loadMode && _loadModeTransaction == null && lastEventInCommand)
+            if (!_loadMode && _loadModeTransaction == null)
             {
                 // Commit the command transaction
                 _cmdTransaction.Commit();

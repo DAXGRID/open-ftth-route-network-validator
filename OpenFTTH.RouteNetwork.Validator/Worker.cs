@@ -18,13 +18,13 @@ namespace OpenFTTH.RouteNetwork.Validator
     {
         private readonly ILogger<Worker> _logger;
         private readonly IOptions<KafkaSetting> _kafkaSetting;
-        private readonly IToposTypedEventMediator<RouteNetworkEvent> _eventMediator;
+        private readonly IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent> _eventMediator;
         private readonly InMemoryNetworkState _inMemoryNetworkState;
         private IDisposable _kafkaConsumer;
 
         private InMemPositionsStorage _positionsStorage = new InMemPositionsStorage();
 
-        public Worker(ILogger<Worker> logger, IOptions<KafkaSetting> kafkaSetting, IToposTypedEventMediator<RouteNetworkEvent> eventMediator, InMemoryNetworkState inMemoryNetworkState)
+        public Worker(ILogger<Worker> logger, IOptions<KafkaSetting> kafkaSetting, IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent> eventMediator, InMemoryNetworkState inMemoryNetworkState)
         {
             _logger = logger;
             _kafkaSetting = kafkaSetting;

@@ -180,6 +180,8 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                     eventType: typeof(ObjectsWithinGeographicalAreaUpdated).Name,
                     eventId: Guid.NewGuid(),
                     eventTimestamp: DateTime.UtcNow,
+                    applicationName: "RouteNetworkValidator",
+                    applicationInfo: null,
                     category: "RouteNetworkValidation",
                     envelope: envelopeInfo,
                     idChangeSets: idChangeSets.ToArray()
