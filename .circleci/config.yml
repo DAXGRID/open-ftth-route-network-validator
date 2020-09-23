@@ -9,6 +9,11 @@ executors:
       IMAGE_NAME: openftth/route-network-validator
     docker:
       - image: circleci/buildpack-deps:stretch
+  alpine-git:
+    environment:
+      IMAGE_NAME: openftth/gdb-integrator
+    docker:
+    - image: alpine/git
 
 jobs:
   build-app:
@@ -70,6 +75,34 @@ jobs:
            docker tag $IMAGE_NAME:latest $IMAGE_NAME:$IMAGE_TAG
            docker push $IMAGE_NAME:latest
            docker push $IMAGE_NAME:$IMAGE_TAG
+  update-helm-chart:
+    executor: alpine-git
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "0e:5e:fe:60:42:ce:25:6a:f0:e8:3a:5c:ec:c4:d2:f5"
+      - run:
+          name: key-scan
+          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: git clone open-ftth-chart
+          command: git clone git@github.com:DAXGRID/open-ftth-chart.git
+      - run:
+          name: package and push
+          command: |
+             apk add bash
+             IMAGE_TAG_NO_V=${CIRCLE_TAG:1}
+             cd ./open-ftth-chart
+             git config user.email "runeanielsen@live.dk"
+             git config user.name "runeanielsen"
+             sed -i "/appVersion:.*/c\appVersion: \"$IMAGE_TAG_NO_V\"" ./openftth/charts/route-network-validator/Chart.yaml
+             sed -i "/  tag:.*/c\  tag: v$IMAGE_TAG_NO_V" ./openftth/charts/route-network-validator/values.yaml
+             CHART_VERSION="$(./scripts/increment-chart-number.sh "$(grep -w '^version:' ./openftth/Chart.yaml)" bug)"
+             sed -i "/^version:.*/c\version: $CHART_VERSION" ./openftth/Chart.yaml
+             git add .
+             git commit -m "upgrades $IMAGE_NAME to version $IMAGE_TAG"
+             git push
 
 workflows:
   build-test-upload_image:
@@ -94,6 +127,14 @@ workflows:
            - build-app
            - test-app
            - build-docker-image
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - update-helm-chart:
+          requires:
+           - docker-publish-image
           filters:
             tags:
               only: /^v.*/
