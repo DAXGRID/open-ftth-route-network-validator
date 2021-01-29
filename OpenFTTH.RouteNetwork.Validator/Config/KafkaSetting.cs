@@ -10,5 +10,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Config
         public string PositionFilePath { get; set; }
         public string RouteNetworkEventTopic { get; set; }
         public string GeographicalAreaUpdatedTopic { get; set; }
+        public string CertificateFilename { get; set; }
     }
 }

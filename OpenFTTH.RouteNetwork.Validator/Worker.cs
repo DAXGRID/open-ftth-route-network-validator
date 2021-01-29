@@ -36,16 +36,30 @@ namespace OpenFTTH.RouteNetwork.Validator
         {
             _logger.LogInformation("Starting route network event consumer worker at: {time}", DateTimeOffset.Now);
 
+            if (_kafkaSetting.Value.RouteNetworkEventTopic == null)
+                throw new ArithmeticException("routeNetworkEventTopic must be specified!");
+
             try
             {
-                _kafkaConsumer = _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c => c.UseKafka(_kafkaSetting.Value.Server))
-                             .Logging(l => l.UseSerilog())
-                             .Positions(p => p.StoreInMemory(_positionsStorage))
-                             .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic))
-                             .Start();
+                var toposConfig = _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c =>
+                {
+                    var kafkaConfig = c.UseKafka(_kafkaSetting.Value.Server);
+
+                    if (_kafkaSetting.Value.CertificateFilename != null)
+                    {
+                        kafkaConfig.WithCertificate(_kafkaSetting.Value.CertificateFilename);
+                    }
+                })
+                .Logging(l => l.UseSerilog())
+                .Positions(p => p.StoreInMemory(_positionsStorage))
+                .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic));
+
+                _kafkaConsumer = toposConfig.Start();
+                
 
                 // Wait for load mode to create an initial version/state
                 _logger.LogInformation("Starting load mode...");
+
                 bool loadFinish = false;
                 while (!stoppingToken.IsCancellationRequested && !loadFinish)
                 {

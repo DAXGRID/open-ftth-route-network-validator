@@ -11,14 +11,7 @@ namespace OpenFTTH.RouteNetwork.Validator
     {
         public static void Main(string[] args)
         {
-            try
-            {
-                Startup.CreateHostBuilder(args).Build().Run();
-            }
-            catch (Exception ex)
-            {
-
-            }
+            Startup.CreateHostBuilder(args).Build().Run();
         }
     }
 }
