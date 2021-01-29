@@ -12,7 +12,7 @@ WORKDIR /app/OpenFTTH.RouteNetwork.Validator
 RUN dotnet publish -c Release -o out --packages ./packages
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/core/runtime:3.1
+FROM mcr.microsoft.com/dotnet/runtime:5.0
 WORKDIR /app
 
 COPY --from=build-env /app/OpenFTTH.RouteNetwork.Validator/out .
