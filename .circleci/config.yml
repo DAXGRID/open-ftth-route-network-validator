@@ -3,7 +3,7 @@ version: 2.1
 executors:
   dotnet-core-sdk:
     docker:
-    - image: mcr.microsoft.com/dotnet/sdk:5.0.102-ca-patch-buster-slim 
+    - image: mcr.microsoft.com/dotnet/sdk:6.0.100-preview.7-bullseye-slim-amd64
   docker-publisher:
     environment:
       IMAGE_NAME: openftth/route-network-validator
