@@ -1,14 +1,15 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using DAX.EventProcessing.Dispatcher;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
+using OpenFTTH.RouteNetwork.Validator.Handlers;
 using OpenFTTH.RouteNetwork.Validator.State;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Topos.Config;
 using Topos.InMem;
 
@@ -18,18 +19,25 @@ namespace OpenFTTH.RouteNetwork.Validator
     {
         private readonly ILogger<Worker> _logger;
         private readonly IOptions<KafkaSetting> _kafkaSetting;
-        private readonly IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent> _eventMediator;
+        private readonly IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent> _routeNetworkEventObserver;
         private readonly InMemoryNetworkState _inMemoryNetworkState;
+        private readonly RouteNetworkEventHandler _routeNetworkEventHandler;
         private IDisposable _kafkaConsumer;
 
         private InMemPositionsStorage _positionsStorage = new InMemPositionsStorage();
 
-        public Worker(ILogger<Worker> logger, IOptions<KafkaSetting> kafkaSetting, IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent> eventMediator, InMemoryNetworkState inMemoryNetworkState)
+        public Worker(
+            ILogger<Worker> logger,
+            IOptions<KafkaSetting> kafkaSetting,
+            IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent> routeNetworkObserver,
+            InMemoryNetworkState inMemoryNetworkState,
+            RouteNetworkEventHandler routeNetworkEventHandler)
         {
             _logger = logger;
             _kafkaSetting = kafkaSetting;
-            _eventMediator = eventMediator;
+            _routeNetworkEventObserver = routeNetworkObserver;
             _inMemoryNetworkState = inMemoryNetworkState;
+            _routeNetworkEventHandler = routeNetworkEventHandler;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -37,11 +45,11 @@ namespace OpenFTTH.RouteNetwork.Validator
             _logger.LogInformation("Starting route network event consumer worker at: {time}", DateTimeOffset.Now);
 
             if (_kafkaSetting.Value.RouteNetworkEventTopic == null)
-                throw new ArithmeticException("routeNetworkEventTopic must be specified!");
+                throw new ArgumentException("routeNetworkEventTopic must be specified!");
 
             try
             {
-                var toposConfig = _eventMediator.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c =>
+                var toposConfig = _routeNetworkEventObserver.Config("validator_route_network_event_consumer_" + Guid.NewGuid(), c =>
                 {
                     var kafkaConfig = c.UseKafka(_kafkaSetting.Value.Server);
 
@@ -50,12 +58,12 @@ namespace OpenFTTH.RouteNetwork.Validator
                         kafkaConfig.WithCertificate(_kafkaSetting.Value.CertificateFilename);
                     }
                 })
-                .Logging(l => l.UseSerilog())
-                .Positions(p => p.StoreInMemory(_positionsStorage))
-                .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic));
+                    .Logging(l => l.UseSerilog())
+                    .Positions(p => p.StoreInMemory(_positionsStorage))
+                    .Topics(t => t.Subscribe(_kafkaSetting.Value.RouteNetworkEventTopic));
 
+                _routeNetworkEventObserver.OnEvent.Subscribe(_routeNetworkEventHandler);
                 _kafkaConsumer = toposConfig.Start();
-                
 
                 // Wait for load mode to create an initial version/state
                 _logger.LogInformation("Starting load mode...");
@@ -67,13 +75,13 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                     _logger.LogInformation($"{_inMemoryNetworkState.NumberOfObjectsLoaded} objects loaded.");
 
-                    DateTime waitStartTimestamp = DateTime.UtcNow;
+                    var waitStartTimestamp = DateTime.UtcNow;
 
                     await Task.Delay(5000, stoppingToken);
 
-                    TimeSpan timespan = waitStartTimestamp - _inMemoryNetworkState.LastEventRecievedTimestamp;
+                    var timeSpan = waitStartTimestamp - _inMemoryNetworkState.LastEventRecievedTimestamp;
 
-                    if (timespan.TotalSeconds > 10)
+                    if (timeSpan.TotalSeconds > 10)
                     {
                         loadFinish = true;
                     }
@@ -98,7 +106,6 @@ namespace OpenFTTH.RouteNetwork.Validator
         {
             _logger.LogInformation("Stopping background worker");
             _kafkaConsumer.Dispose();
-
             await Task.CompletedTask;
         }
     }

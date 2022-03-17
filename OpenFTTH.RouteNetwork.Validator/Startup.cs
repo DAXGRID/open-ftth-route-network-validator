@@ -1,7 +1,6 @@
 ﻿using DAX.EventProcessing.Dispatcher;
 using DAX.EventProcessing.Dispatcher.Topos;
 using DAX.ObjectVersioning.Core;
-using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -93,17 +92,16 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 services.AddSingleton<IServiceProvider, ServiceProvider>();
 
-                // MediatR
-                services.AddMediatR(typeof(Startup));
-
                 // Kafka producer and consumer stuff
-                services.AddSingleton<IToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent>, ToposTypedEventMediator<RouteNetworkEditOperationOccuredEvent>>();
+                services.AddSingleton<
+                    IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>,
+                    ToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>>();
                 services.AddSingleton<IProducer, Producer.Kafka.Producer>();
 
                 // In memory state manager
                 services.AddSingleton<InMemoryNetworkState>();
 
-                // Event handler
+                // Event handlers
                 services.AddSingleton<RouteNetworkEventHandler>();
 
                 // Database stuff
