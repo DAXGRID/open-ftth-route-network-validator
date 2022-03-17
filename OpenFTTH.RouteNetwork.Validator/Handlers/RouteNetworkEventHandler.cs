@@ -1,28 +1,18 @@
 ﻿using DAX.ObjectVersioning.Core;
-using DAX.ObjectVersioning.Graph;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using OpenFTTH.Events.RouteNetwork;
-using OpenFTTH.Events.RouteNetwork.Infos;
 using OpenFTTH.RouteNetwork.Validator.Model;
 using OpenFTTH.RouteNetwork.Validator.State;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace OpenFTTH.RouteNetwork.Validator.Handlers
 {
-    public class RouteNetworkEventHandler :
-        IRequestHandler<RouteNetworkEditOperationOccuredEvent>
+    public class RouteNetworkEventHandler : IObserver<RouteNetworkEditOperationOccuredEvent>
     {
         private readonly ILogger<RouteNetworkEventHandler> _logger;
-
-        private InMemoryNetworkState _inMemoryNetworkState;
-
-        private HashSet<Guid> _alreadyProcessed = new HashSet<Guid>();
+        private readonly InMemoryNetworkState _inMemoryNetworkState;
+        private readonly HashSet<Guid> _alreadyProcessed = new HashSet<Guid>();
 
         public RouteNetworkEventHandler(ILogger<RouteNetworkEventHandler> logger, InMemoryNetworkState inMemoryNetworkState)
         {
@@ -30,7 +20,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             _inMemoryNetworkState = inMemoryNetworkState;
         }
 
-        public Task<Unit> Handle(RouteNetworkEditOperationOccuredEvent request, CancellationToken cancellationToken)
+        public void Handle(RouteNetworkEditOperationOccuredEvent request)
         {
             var trans = _inMemoryNetworkState.GetTransaction();
 
@@ -70,10 +60,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             }
 
             _inMemoryNetworkState.FinishWithTransaction();
-
-            return Unit.Task;
         }
-
 
         private void HandleEvent(RouteNodeAdded request, ITransaction transaction)
         {
@@ -94,13 +81,11 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
             if (AlreadyProcessed(request.EventId))
                 return;
 
-
             if (!(_inMemoryNetworkState.GetObject(request.FromNodeId) is RouteNode fromNode))
             {
                 _logger.LogError($"Route network event stream seems to be broken! RouteSegmentAdded event with id: {request.EventId} and segment id: {request.SegmentId} has a FromNodeId: {request.FromNodeId} that don't exists in the current state.");
                 return;
             }
-
 
             if (!(_inMemoryNetworkState.GetObject(request.ToNodeId) is RouteNode toNode))
             {
@@ -129,10 +114,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
             if (AlreadyProcessed(request.EventId))
                 return;
-       
+
             transaction.Delete(request.SegmentId, ignoreDublicates: true);
         }
-
 
         private void HandleEvent(RouteNodeMarkedForDeletion request, ITransaction transaction)
         {
@@ -143,7 +127,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
 
             transaction.Delete(request.NodeId, ignoreDublicates: true);
         }
-       
 
         private bool AlreadyProcessed(Guid id)
         {
@@ -154,6 +137,21 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
                 _alreadyProcessed.Add(id);
                 return false;
             }
+        }
+
+        public void OnCompleted()
+        {
+            // Do Nothing
+        }
+
+        public void OnError(Exception error)
+        {
+            _logger.LogError(error.Message, error.StackTrace);
+        }
+
+        public void OnNext(RouteNetworkEditOperationOccuredEvent value)
+        {
+            Handle(@value);
         }
     }
 }
