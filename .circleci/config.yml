@@ -86,6 +86,7 @@ jobs:
           name: package and push
           command: |
              apk add bash
+             IMAGE_TAG=${CIRCLE_TAG}
              IMAGE_TAG_NO_V=${CIRCLE_TAG:1}
              cd ./open-ftth-chart
              git config user.email "admin@dax.dk"
