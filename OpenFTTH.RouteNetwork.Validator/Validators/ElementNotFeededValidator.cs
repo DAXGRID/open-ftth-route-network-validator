@@ -1,12 +1,14 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
+using Newtonsoft.Json;
 using OpenFTTH.Events.Changes;
 using OpenFTTH.Events.Geo;
 using OpenFTTH.Events.RouteNetwork.Infos;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Model;
+using OpenFTTH.RouteNetwork.Validator.Notification;
 using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using System;
@@ -14,8 +16,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OpenFTTH.RouteNetwork.Validator.Validators
 {
@@ -27,10 +27,18 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
         private readonly DatabaseSetting _databaseSetting;
         private readonly IProducer _eventProducer;
         private readonly KafkaSetting _kafkaSetting;
+        private readonly INotificationClient _notificationClient;
 
         private Dictionary<Guid, IRouteNetworkElement> _lastNetworkElementsNotFeeded = new Dictionary<Guid, IRouteNetworkElement>();
 
-        public ElementNotFeededValidator(ILogger<ElementNotFeededValidator> logger, InMemoryNetworkState inMemoryNetworkState, PostgresWriter postgresWriter, IOptions<DatabaseSetting> databaseSetting, IProducer eventProducer, IOptions<KafkaSetting> kafkaSetting)
+        public ElementNotFeededValidator(
+            ILogger<ElementNotFeededValidator> logger,
+            InMemoryNetworkState inMemoryNetworkState,
+            PostgresWriter postgresWriter,
+            IOptions<DatabaseSetting> databaseSetting,
+            IProducer eventProducer,
+            IOptions<KafkaSetting> kafkaSetting,
+            INotificationClient notificationClient)
         {
             _logger = logger;
             _inMemoryNetworkState = inMemoryNetworkState;
@@ -38,11 +46,13 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
             _databaseSetting = databaseSetting.Value;
             _eventProducer = eventProducer;
             _kafkaSetting = kafkaSetting.Value;
+            _notificationClient = notificationClient;
         }
 
         public void CreateTable(IDbTransaction transaction)
         {
-            _postgresWriter.CreateIdTable(_databaseSetting.Schema, _databaseSetting.ElementNotFeededTableName, transaction);
+            _postgresWriter.CreateIdTable(
+                _databaseSetting.Schema, _databaseSetting.ElementNotFeededTableName, transaction);
         }
 
         public void Validate(bool initial, IDbTransaction trans)
@@ -146,7 +156,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
             _logger.LogInformation($"{this.GetType().Name} writing analysis result to database finish. Elapsed time: {stopwatch.Elapsed.Milliseconds} milliseconds.");
         }
 
-        private async void PublishObjectsWithinGeographicalAreaUpdatedEvent(Dictionary<Guid, IRouteNetworkElement> addedElements, Dictionary<Guid, IRouteNetworkElement> deletedElements)
+        private void PublishObjectsWithinGeographicalAreaUpdatedEvent(
+            Dictionary<Guid, IRouteNetworkElement> addedElements,
+            Dictionary<Guid, IRouteNetworkElement> deletedElements)
         {
             List<IdChangeSet> idChangeSets = new List<IdChangeSet>();
 
@@ -161,19 +173,21 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                     idChangeSets.Add(new IdChangeSet("RouteElementNotFeeded", ChangeTypeEnum.Deletion, deletedElements.Keys.ToArray()));
             }
 
-            // Create an envelop that covers all route network elements that have either added og deleted by the validation logic
-            Envelope env = new Envelope();
-            
+            // Create an envelop that covers all route network elements
+            // that have either added og deleted by the validation logic
+            var env = new Envelope();
+
             foreach (var addedElement in addedElements.Values)
             {
                 env.ExpandToInclude(addedElement.Envelope);
             }
+
             foreach (var deletedElement in deletedElements.Values)
             {
                 env.ExpandToInclude(deletedElement.Envelope);
             }
 
-            EnvelopeInfo envelopeInfo = new EnvelopeInfo(env.MinX, env.MaxX, env.MinY, env.MaxY);
+            var envelopeInfo = new EnvelopeInfo(env.MinX, env.MaxX, env.MinY, env.MaxY);
 
             var graphicalObjectsUpdatedEvent =
                 new ObjectsWithinGeographicalAreaUpdated(
@@ -187,7 +201,9 @@ namespace OpenFTTH.RouteNetwork.Validator.Validators
                     idChangeSets: idChangeSets.ToArray()
                 );
 
-            await _eventProducer.Produce(_kafkaSetting.GeographicalAreaUpdatedTopic, graphicalObjectsUpdatedEvent);
+            _notificationClient.Notify(
+                "GeographicalAreaUpdated",
+                JsonConvert.SerializeObject(graphicalObjectsUpdatedEvent));
         }
     }
 }

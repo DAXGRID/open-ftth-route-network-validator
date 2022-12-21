@@ -98,15 +98,13 @@ namespace OpenFTTH.RouteNetwork.Validator
             {
                 _logger.LogError(ex, ex.Message);
             }
-
-            await Task.CompletedTask;
         }
 
-        public override async Task StopAsync(CancellationToken stoppingToken)
+        public override Task StopAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Stopping background worker");
             _kafkaConsumer.Dispose();
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }
