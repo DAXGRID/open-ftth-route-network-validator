@@ -1,6 +1,5 @@
 ﻿using DAX.EventProcessing.Dispatcher;
 using DAX.EventProcessing.Dispatcher.Topos;
-using DAX.ObjectVersioning.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,6 +10,7 @@ using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
+using OpenFTTH.RouteNetwork.Validator.Notification;
 using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using OpenFTTH.RouteNetwork.Validator.Validators;
@@ -46,13 +46,13 @@ namespace OpenFTTH.RouteNetwork.Validator
         private static void ConfigureSerialization(IHostBuilder hostBuilder)
         {
             JsonConvert.DefaultSettings = (() =>
-               {
-                   var settings = new JsonSerializerSettings();
-                   settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-                   settings.Converters.Add(new StringEnumConverter());
-                   settings.TypeNameHandling = TypeNameHandling.Auto;
-                   return settings;
-               });
+            {
+                var settings = new JsonSerializerSettings();
+                settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                settings.Converters.Add(new StringEnumConverter());
+                settings.TypeNameHandling = TypeNameHandling.Auto;
+                return settings;
+            });
         }
 
         private static void ConfigureLogging(IHostBuilder hostBuilder)
@@ -82,11 +82,17 @@ namespace OpenFTTH.RouteNetwork.Validator
             {
                 services.AddOptions();
 
-                services.Configure<KafkaSetting>(kafkaSettings =>
-                                                hostContext.Configuration.GetSection("Kafka").Bind(kafkaSettings));
+                services.Configure<KafkaSetting>(
+                    kafkaSettings =>
+                    hostContext.Configuration.GetSection("Kafka").Bind(kafkaSettings));
 
-                services.Configure<DatabaseSetting>(databaseSettings =>
-                                               hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
+                services.Configure<DatabaseSetting>(
+                    databaseSettings =>
+                    hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
+
+                services.Configure<NotificationServerSetting>(
+                    notificationServerSetting =>
+                    hostContext.Configuration.GetSection("NotificationServer").Bind(notificationServerSetting));
 
                 services.AddLogging();
 
@@ -112,6 +118,8 @@ namespace OpenFTTH.RouteNetwork.Validator
 
                 // The worker
                 services.AddHostedService<Worker>();
+
+                services.AddSingleton<INotificationClient, NotificationServerClient>();
             });
         }
     }

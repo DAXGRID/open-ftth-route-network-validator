@@ -2,16 +2,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenFTTH.Events.RouteNetwork.Infos;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
-using OpenFTTH.RouteNetwork.Validator.Model;
 using OpenFTTH.RouteNetwork.Validator.Validators;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 
 namespace OpenFTTH.RouteNetwork.Validator.State
 {
@@ -36,7 +31,7 @@ namespace OpenFTTH.RouteNetwork.Validator.State
 
         private DateTime __lastEventRecievedTimestamp = DateTime.UtcNow;
         public DateTime LastEventRecievedTimestamp => __lastEventRecievedTimestamp;
-      
+
         private long _numberOfObjectsLoaded = 0;
         public long NumberOfObjectsLoaded => _numberOfObjectsLoaded;
 
