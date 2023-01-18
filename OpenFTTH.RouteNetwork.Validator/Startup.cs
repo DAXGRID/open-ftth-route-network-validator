@@ -18,109 +18,108 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using System;
 
-namespace OpenFTTH.RouteNetwork.Validator
+namespace OpenFTTH.RouteNetwork.Validator;
+
+public class Startup
 {
-    public class Startup
+    public static IHostBuilder CreateHostBuilder(string[] args)
     {
-        public static IHostBuilder CreateHostBuilder(string[] args)
+        var hostBuilder = new HostBuilder();
+
+        ConfigureApp(hostBuilder);
+        ConfigureSerialization(hostBuilder);
+        ConfigureLogging(hostBuilder);
+        ConfigureServices(hostBuilder);
+
+        return hostBuilder;
+    }
+
+    private static void ConfigureApp(IHostBuilder hostBuilder)
+    {
+        hostBuilder.ConfigureAppConfiguration((hostingContext, config) =>
         {
-            var hostBuilder = new HostBuilder();
+            config.AddEnvironmentVariables();
+            config.AddJsonFile("appsettings.json", true, true);
+        });
+    }
 
-            ConfigureApp(hostBuilder);
-            ConfigureSerialization(hostBuilder);
-            ConfigureLogging(hostBuilder);
-            ConfigureServices(hostBuilder);
-
-            return hostBuilder;
-        }
-
-        private static void ConfigureApp(IHostBuilder hostBuilder)
+    private static void ConfigureSerialization(IHostBuilder hostBuilder)
+    {
+        JsonConvert.DefaultSettings = (() =>
         {
-            hostBuilder.ConfigureAppConfiguration((hostingContext, config) =>
+            var settings = new JsonSerializerSettings();
+            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+            settings.Converters.Add(new StringEnumConverter());
+            settings.TypeNameHandling = TypeNameHandling.Auto;
+            return settings;
+        });
+    }
+
+    private static void ConfigureLogging(IHostBuilder hostBuilder)
+    {
+        var loggingConfiguration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", true, false)
+            .AddEnvironmentVariables().Build();
+
+        hostBuilder.ConfigureServices((hostContext, services) =>
+        {
+            services.AddLogging(loggingBuilder =>
             {
-                config.AddEnvironmentVariables();
-                config.AddJsonFile("appsettings.json", true, true);
-            });
-        }
+                var logger = new LoggerConfiguration()
+                    .ReadFrom.Configuration(loggingConfiguration)
+                    .Enrich.FromLogContext()
+                    .WriteTo.Console(new CompactJsonFormatter())
+                    .CreateLogger();
 
-        private static void ConfigureSerialization(IHostBuilder hostBuilder)
+                loggingBuilder.AddSerilog(logger, true);
+            });
+        });
+    }
+
+    public static void ConfigureServices(IHostBuilder hostBuilder)
+    {
+        hostBuilder.ConfigureServices((hostContext, services) =>
         {
-            JsonConvert.DefaultSettings = (() =>
-            {
-                var settings = new JsonSerializerSettings();
-                settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-                settings.Converters.Add(new StringEnumConverter());
-                settings.TypeNameHandling = TypeNameHandling.Auto;
-                return settings;
-            });
-        }
+            services.AddOptions();
 
-        private static void ConfigureLogging(IHostBuilder hostBuilder)
-        {
-            var loggingConfiguration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", true, false)
-                .AddEnvironmentVariables().Build();
+            services.Configure<KafkaSetting>(
+                kafkaSettings =>
+                hostContext.Configuration.GetSection("Kafka").Bind(kafkaSettings));
 
-            hostBuilder.ConfigureServices((hostContext, services) =>
-            {
-                services.AddLogging(loggingBuilder =>
-                {
-                    var logger = new LoggerConfiguration()
-                        .ReadFrom.Configuration(loggingConfiguration)
-                        .Enrich.FromLogContext()
-                        .WriteTo.Console(new CompactJsonFormatter())
-                        .CreateLogger();
+            services.Configure<DatabaseSetting>(
+                databaseSettings =>
+                hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
 
-                    loggingBuilder.AddSerilog(logger, true);
-                });
-            });
-        }
+            services.Configure<NotificationServerSetting>(
+                notificationServerSetting =>
+                hostContext.Configuration.GetSection("NotificationServer").Bind(notificationServerSetting));
 
-        public static void ConfigureServices(IHostBuilder hostBuilder)
-        {
-            hostBuilder.ConfigureServices((hostContext, services) =>
-            {
-                services.AddOptions();
+            services.AddLogging();
 
-                services.Configure<KafkaSetting>(
-                    kafkaSettings =>
-                    hostContext.Configuration.GetSection("Kafka").Bind(kafkaSettings));
+            services.AddSingleton<IServiceProvider, ServiceProvider>();
 
-                services.Configure<DatabaseSetting>(
-                    databaseSettings =>
-                    hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
+            // Kafka producer and consumer stuff
+            services.AddSingleton<
+                IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>,
+                ToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>>();
+            services.AddSingleton<IProducer, Producer.Kafka.Producer>();
 
-                services.Configure<NotificationServerSetting>(
-                    notificationServerSetting =>
-                    hostContext.Configuration.GetSection("NotificationServer").Bind(notificationServerSetting));
+            // In memory state manager
+            services.AddSingleton<InMemoryNetworkState>();
 
-                services.AddLogging();
+            // Event handlers
+            services.AddSingleton<RouteNetworkEventHandler>();
 
-                services.AddSingleton<IServiceProvider, ServiceProvider>();
+            // Database stuff
+            services.AddSingleton<PostgresWriter>();
 
-                // Kafka producer and consumer stuff
-                services.AddSingleton<
-                    IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>,
-                    ToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>>();
-                services.AddSingleton<IProducer, Producer.Kafka.Producer>();
+            // Validators
+            services.AddSingleton<IValidator, ElementNotFeededValidator>();
 
-                // In memory state manager
-                services.AddSingleton<InMemoryNetworkState>();
+            // The worker
+            services.AddHostedService<Worker>();
 
-                // Event handlers
-                services.AddSingleton<RouteNetworkEventHandler>();
-
-                // Database stuff
-                services.AddSingleton<PostgresWriter>();
-
-                // Validators
-                services.AddSingleton<IValidator, ElementNotFeededValidator>();
-
-                // The worker
-                services.AddHostedService<Worker>();
-
-                services.AddSingleton<INotificationClient, NotificationServerClient>();
-            });
-        }
+            services.AddSingleton<INotificationClient, NotificationServerClient>();
+        });
     }
 }
