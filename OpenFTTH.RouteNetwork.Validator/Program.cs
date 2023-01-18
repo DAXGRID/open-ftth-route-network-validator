@@ -1,13 +1,12 @@
 using Microsoft.Extensions.Hosting;
 using System.Threading.Tasks;
 
-namespace OpenFTTH.RouteNetwork.Validator
+namespace OpenFTTH.RouteNetwork.Validator;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static async Task Main(string[] args)
-        {
-            await Startup.CreateHostBuilder(args).Build().RunAsync();
-        }
+        await Startup.CreateHostBuilder(args).Build().RunAsync();
     }
 }

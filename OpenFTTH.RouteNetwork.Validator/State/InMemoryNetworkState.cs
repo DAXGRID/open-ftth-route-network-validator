@@ -8,152 +8,151 @@ using OpenFTTH.RouteNetwork.Validator.Validators;
 using System;
 using System.Linq;
 
-namespace OpenFTTH.RouteNetwork.Validator.State
+namespace OpenFTTH.RouteNetwork.Validator.State;
+
+public class InMemoryNetworkState
 {
-    public class InMemoryNetworkState
+    private readonly ILogger<InMemoryNetworkState> _logger;
+
+    private readonly PostgresWriter _postgresWriter;
+
+    private readonly IOptions<DatabaseSetting> _databaseSetting;
+
+    private readonly IServiceProvider _serviceProvider;
+
+    private InMemoryObjectManager _objectManager = new InMemoryObjectManager();
+    public InMemoryObjectManager ObjectManager => _objectManager;
+
+    private bool _loadMode = true;
+
+    private ITransaction _loadModeTransaction;
+
+    private ITransaction _cmdTransaction;
+
+    private DateTime __lastEventRecievedTimestamp = DateTime.UtcNow;
+    public DateTime LastEventRecievedTimestamp => __lastEventRecievedTimestamp;
+
+    private long _numberOfObjectsLoaded = 0;
+    public long NumberOfObjectsLoaded => _numberOfObjectsLoaded;
+
+    public InMemoryNetworkState(ILogger<InMemoryNetworkState> logger, PostgresWriter postgresWriter, IOptions<DatabaseSetting> databaseSetting, IServiceProvider serviceProvider)
     {
-        private readonly ILogger<InMemoryNetworkState> _logger;
+        _logger = logger;
+        _postgresWriter = postgresWriter;
+        _databaseSetting = databaseSetting;
+        _serviceProvider = serviceProvider;
+    }
 
-        private readonly PostgresWriter _postgresWriter;
+    public ITransaction GetTransaction()
+    {
+        if (_loadMode)
+            return GetLoadModeTransaction();
+        else
+            return GetCommandTransaction();
+    }
 
-        private readonly IOptions<DatabaseSetting> _databaseSetting;
+    public void FinishWithTransaction()
+    {
+        __lastEventRecievedTimestamp = DateTime.UtcNow;
+        _numberOfObjectsLoaded++;
 
-        private readonly IServiceProvider _serviceProvider;
-
-        private InMemoryObjectManager _objectManager = new InMemoryObjectManager();
-        public InMemoryObjectManager ObjectManager => _objectManager;
-
-        private bool _loadMode = true;
-
-        private ITransaction _loadModeTransaction;
-
-        private ITransaction _cmdTransaction;
-
-        private DateTime __lastEventRecievedTimestamp = DateTime.UtcNow;
-        public DateTime LastEventRecievedTimestamp => __lastEventRecievedTimestamp;
-
-        private long _numberOfObjectsLoaded = 0;
-        public long NumberOfObjectsLoaded => _numberOfObjectsLoaded;
-
-        public InMemoryNetworkState(ILogger<InMemoryNetworkState> logger, PostgresWriter postgresWriter, IOptions<DatabaseSetting> databaseSetting, IServiceProvider serviceProvider)
+        // We're our of load mode, and dealing with last event
+        if (!_loadMode && _loadModeTransaction == null)
         {
-            _logger = logger;
-            _postgresWriter = postgresWriter;
-            _databaseSetting = databaseSetting;
-            _serviceProvider = serviceProvider;
+            // Commit the command transaction
+            _cmdTransaction.Commit();
+            _cmdTransaction = null;
+
+            CallValidators(false);
         }
+    }
 
-        public ITransaction GetTransaction()
+    private void CallValidators(bool initial)
+    {
+        var validators = _serviceProvider.GetServices<IValidator>().ToList();
+
+        if (initial)
         {
-            if (_loadMode)
-                return GetLoadModeTransaction();
-            else
-                return GetCommandTransaction();
-        }
-
-        public void FinishWithTransaction()
-        {
-            __lastEventRecievedTimestamp = DateTime.UtcNow;
-            _numberOfObjectsLoaded++;
-
-            // We're our of load mode, and dealing with last event
-            if (!_loadMode && _loadModeTransaction == null)
+            using (var conn = _postgresWriter.GetConnection())
             {
-                // Commit the command transaction
-                _cmdTransaction.Commit();
-                _cmdTransaction = null;
+                conn.Open();
 
-                CallValidators(false);
-            }
-        }
-
-        private void CallValidators(bool initial)
-        {
-            var validators = _serviceProvider.GetServices<IValidator>().ToList();
-
-            if (initial)
-            {
-                using (var conn = _postgresWriter.GetConnection())
+                using (var trans = conn.BeginTransaction())
                 {
-                    conn.Open();
+                    // Drop and create schema
+                    _postgresWriter.DropSchema(_databaseSetting.Value.Schema, trans);
+                    _postgresWriter.CreateSchema(_databaseSetting.Value.Schema, trans);
 
-                    using (var trans = conn.BeginTransaction())
+                    // Create validator tables
+                    foreach (var validator in validators)
                     {
-                        // Drop and create schema
-                        _postgresWriter.DropSchema(_databaseSetting.Value.Schema, trans);
-                        _postgresWriter.CreateSchema(_databaseSetting.Value.Schema, trans);
-
-                        // Create validator tables
-                        foreach (var validator in validators)
-                        {
-                            validator.CreateTable(trans);
-                        }
-
-                        // Do initial validation
-                        foreach (var validator in validators)
-                        {
-                            validator.Validate(true, trans);
-                        }
-
-                        trans.Commit();
+                        validator.CreateTable(trans);
                     }
+
+                    // Do initial validation
+                    foreach (var validator in validators)
+                    {
+                        validator.Validate(true, trans);
+                    }
+
+                    trans.Commit();
                 }
             }
-            else
+        }
+        else
+        {
+            // Do validation
+            foreach (var validator in validators)
             {
-                // Do validation
-                foreach (var validator in validators)
-                {
-                    validator.Validate(false);
-                }
+                validator.Validate(false);
             }
         }
+    }
 
-        public IVersionedObject GetObject(Guid id)
+    public IVersionedObject GetObject(Guid id)
+    {
+        if (_loadMode && _loadModeTransaction != null)
+            return _loadModeTransaction.GetObject(id);
+        else if (_cmdTransaction != null)
         {
-            if (_loadMode && _loadModeTransaction != null)
-                return _loadModeTransaction.GetObject(id);
-            else if (_cmdTransaction != null)
-            {
-                var transObj = _cmdTransaction.GetObject(id);
+            var transObj = _cmdTransaction.GetObject(id);
 
-                if (transObj != null)
-                    return transObj;
-                else
-                    return _objectManager.GetObject(id);
-            }
+            if (transObj != null)
+                return transObj;
             else
-                return null;
+                return _objectManager.GetObject(id);
         }
+        else
+            return null;
+    }
 
 
-        public void FinishLoadMode()
-        {
-            _loadMode = false;
+    public void FinishLoadMode()
+    {
+        _loadMode = false;
 
-            if (_loadModeTransaction != null)
-                _loadModeTransaction.Commit();
+        if (_loadModeTransaction != null)
+            _loadModeTransaction.Commit();
 
-            _loadModeTransaction = null;
+        _loadModeTransaction = null;
 
-            CallValidators(true);
-        }
+        CallValidators(true);
+    }
 
 
-        private ITransaction GetLoadModeTransaction()
-        {
-            if (_loadModeTransaction == null)
-                _loadModeTransaction = _objectManager.CreateTransaction();
+    private ITransaction GetLoadModeTransaction()
+    {
+        if (_loadModeTransaction == null)
+            _loadModeTransaction = _objectManager.CreateTransaction();
 
-            return _loadModeTransaction;
-        }
+        return _loadModeTransaction;
+    }
 
-        private ITransaction GetCommandTransaction()
-        {
-            if (_cmdTransaction == null)
-                _cmdTransaction = _objectManager.CreateTransaction();
+    private ITransaction GetCommandTransaction()
+    {
+        if (_cmdTransaction == null)
+            _cmdTransaction = _objectManager.CreateTransaction();
 
-            return _cmdTransaction;
-        }
+        return _cmdTransaction;
     }
 }

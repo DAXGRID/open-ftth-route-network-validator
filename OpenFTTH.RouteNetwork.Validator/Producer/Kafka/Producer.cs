@@ -1,53 +1,52 @@
-﻿using System.Threading.Tasks;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Topos.Config;
-using Topos.Producer;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using OpenFTTH.RouteNetwork.Validator.Config;
+using System.Threading.Tasks;
+using Topos.Config;
+using Topos.Producer;
 
-namespace OpenFTTH.RouteNetwork.Validator.Producer.Kafka
+namespace OpenFTTH.RouteNetwork.Validator.Producer.Kafka;
+
+public class Producer : IProducer
 {
-    public class Producer : IProducer
+    private readonly KafkaSetting _kafkaSetting;
+    private IToposProducer _producer;
+    private readonly ILogger<Producer> _logger;
+
+    public Producer(IOptions<KafkaSetting> kafkaSetting, ILogger<Producer> logger)
     {
-        private readonly KafkaSetting _kafkaSetting;
-        private IToposProducer _producer;
-        private readonly ILogger<Producer> _logger;
+        _kafkaSetting = kafkaSetting.Value;
+        _logger = logger;
+    }
 
-        public Producer(IOptions<KafkaSetting> kafkaSetting, ILogger<Producer> logger)
+    public void Init()
+    {
+        if (_producer is null)
         {
-            _kafkaSetting = kafkaSetting.Value;
-            _logger = logger;
+            _producer = Configure.Producer(c => c.UseKafka(_kafkaSetting.Server))
+                .Serialization(s => s.UseNewtonsoftJson())
+                .Create();
         }
+    }
 
-        public void Init()
-        {
-            if (_producer is null)
-            {
-                _producer = Configure.Producer(c => c.UseKafka(_kafkaSetting.Server))
-                    .Serialization(s => s.UseNewtonsoftJson())
-                    .Create();
-            }
-        }
+    public async Task Produce(string topicName, object toposMessage)
+    {
+        _logger.LogInformation($"Sending message topicname: {topicName} and body {JsonConvert.SerializeObject(toposMessage, Formatting.Indented)}");
 
-        public async Task Produce(string topicName, object toposMessage)
-        {
-            _logger.LogInformation($"Sending message topicname: {topicName} and body {JsonConvert.SerializeObject(toposMessage, Formatting.Indented)}");
+        if (_producer == null)
+            Init();
 
-            if (_producer == null)
-                Init();
+        await _producer.Send(topicName, new ToposMessage(toposMessage));
+    }
 
-            await _producer.Send(topicName, new ToposMessage(toposMessage));
-        }
+    public async Task Produce(string topicName, object toposMessage, string partitionKey)
+    {
+        await _producer.Send(topicName, new ToposMessage(toposMessage), partitionKey);
+    }
 
-        public async Task Produce(string topicName, object toposMessage, string partitionKey)
-        {
-            await _producer.Send(topicName, new ToposMessage(toposMessage), partitionKey);
-        }
-
-        public void Dispose()
-        {
-            _producer.Dispose();
-        }
+    public void Dispose()
+    {
+        _producer.Dispose();
     }
 }
