@@ -9,7 +9,6 @@ using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Model;
 using OpenFTTH.RouteNetwork.Validator.Notification;
-using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using System;
 using System.Collections.Generic;
@@ -25,7 +24,6 @@ public class ElementNotFeededValidator : IValidator
     private readonly InMemoryNetworkState _inMemoryNetworkState;
     private readonly PostgresWriter _postgresWriter;
     private readonly DatabaseSetting _databaseSetting;
-    private readonly IProducer _eventProducer;
     private readonly KafkaSetting _kafkaSetting;
     private readonly INotificationClient _notificationClient;
 
@@ -36,7 +34,6 @@ public class ElementNotFeededValidator : IValidator
         InMemoryNetworkState inMemoryNetworkState,
         PostgresWriter postgresWriter,
         IOptions<DatabaseSetting> databaseSetting,
-        IProducer eventProducer,
         IOptions<KafkaSetting> kafkaSetting,
         INotificationClient notificationClient)
     {
@@ -44,7 +41,6 @@ public class ElementNotFeededValidator : IValidator
         _inMemoryNetworkState = inMemoryNetworkState;
         _postgresWriter = postgresWriter;
         _databaseSetting = databaseSetting.Value;
-        _eventProducer = eventProducer;
         _kafkaSetting = kafkaSetting.Value;
         _notificationClient = notificationClient;
     }
