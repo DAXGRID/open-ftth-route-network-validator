@@ -11,7 +11,6 @@ using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
 using OpenFTTH.RouteNetwork.Validator.Handlers;
 using OpenFTTH.RouteNetwork.Validator.Notification;
-using OpenFTTH.RouteNetwork.Validator.Producer;
 using OpenFTTH.RouteNetwork.Validator.State;
 using OpenFTTH.RouteNetwork.Validator.Validators;
 using Serilog;
@@ -102,7 +101,6 @@ public class Startup
             services.AddSingleton<
                 IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>,
                 ToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>>();
-            services.AddSingleton<IProducer, Producer.Kafka.Producer>();
 
             // In memory state manager
             services.AddSingleton<InMemoryNetworkState>();
