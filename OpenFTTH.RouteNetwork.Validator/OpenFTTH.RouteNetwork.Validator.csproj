@@ -9,7 +9,6 @@
     <PackageReference Include="DAX.EventProcessing.Dispatcher" Version="2.1.0" />
     <PackageReference Include="DAX.ObjectVersioning.Graph" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.10" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="2.0.4" />
     <PackageReference Include="Npgsql" Version="6.0.3" />
     <PackageReference Include="OpenFTTH.Events" Version="3.1.0" />
