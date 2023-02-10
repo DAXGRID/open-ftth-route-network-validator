@@ -1,16 +1,15 @@
-﻿using DAX.EventProcessing.Dispatcher;
-using DAX.EventProcessing.Dispatcher.Topos;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
-using OpenFTTH.Events.RouteNetwork;
+using OpenFTTH.EventSourcing;
+using OpenFTTH.EventSourcing.Postgres;
 using OpenFTTH.RouteNetwork.Validator.Config;
 using OpenFTTH.RouteNetwork.Validator.Database.Impl;
-using OpenFTTH.RouteNetwork.Validator.Handlers;
 using OpenFTTH.RouteNetwork.Validator.Notification;
+using OpenFTTH.RouteNetwork.Validator.Projections;
 using OpenFTTH.RouteNetwork.Validator.State;
 using OpenFTTH.RouteNetwork.Validator.Validators;
 using Serilog;
@@ -81,10 +80,6 @@ public class Startup
         {
             services.AddOptions();
 
-            services.Configure<KafkaSetting>(
-                kafkaSettings =>
-                hostContext.Configuration.GetSection("Kafka").Bind(kafkaSettings));
-
             services.Configure<DatabaseSetting>(
                 databaseSettings =>
                 hostContext.Configuration.GetSection("Database").Bind(databaseSettings));
@@ -93,31 +88,28 @@ public class Startup
                 notificationServerSetting =>
                 hostContext.Configuration.GetSection("NotificationServer").Bind(notificationServerSetting));
 
-            services.AddLogging();
-
             services.AddSingleton<IServiceProvider, ServiceProvider>();
 
-            // Kafka producer and consumer stuff
-            services.AddSingleton<
-                IToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>,
-                ToposTypedEventObservable<RouteNetworkEditOperationOccuredEvent>>();
-
-            // In memory state manager
             services.AddSingleton<InMemoryNetworkState>();
 
-            // Event handlers
-            services.AddSingleton<RouteNetworkEventHandler>();
-
-            // Database stuff
             services.AddSingleton<PostgresWriter>();
 
-            // Validators
             services.AddSingleton<IValidator, ElementNotFeededValidator>();
 
-            // The worker
             services.AddHostedService<Worker>();
 
             services.AddSingleton<INotificationClient, NotificationServerClient>();
+
+            services.AddSingleton<IProjection, RouteNetworkProjection>();
+
+            services.AddSingleton<IEventStore>(
+                e =>
+                new PostgresEventStore(
+                    serviceProvider: e.GetRequiredService<IServiceProvider>(),
+                    connectionString: hostContext.Configuration.GetSection("EventStore").GetValue<string>("ConnectionString"),
+                    databaseSchemaName: "events"
+                )
+            );
         });
     }
 }

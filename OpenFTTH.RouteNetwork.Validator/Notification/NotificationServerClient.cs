@@ -7,7 +7,7 @@ using System.Net.Sockets;
 
 namespace OpenFTTH.RouteNetwork.Validator.Notification;
 
-public sealed class NotificationServerClient : INotificationClient
+internal sealed class NotificationServerClient : INotificationClient
 {
     private readonly Client _notificationClient;
 

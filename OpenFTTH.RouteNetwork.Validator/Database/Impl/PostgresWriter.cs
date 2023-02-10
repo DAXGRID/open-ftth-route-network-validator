@@ -8,7 +8,7 @@ using System.Data;
 
 namespace OpenFTTH.RouteNetwork.Validator.Database.Impl;
 
-public class PostgresWriter
+internal sealed class PostgresWriter
 {
     private readonly ILogger<PostgresWriter> _logger;
     private readonly DatabaseSetting _databaseSetting;

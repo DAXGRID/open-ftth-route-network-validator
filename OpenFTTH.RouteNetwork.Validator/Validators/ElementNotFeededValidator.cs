@@ -18,13 +18,12 @@ using System.Linq;
 
 namespace OpenFTTH.RouteNetwork.Validator.Validators;
 
-public class ElementNotFeededValidator : IValidator
+internal sealed class ElementNotFeededValidator : IValidator
 {
     private readonly ILogger _logger;
     private readonly InMemoryNetworkState _inMemoryNetworkState;
     private readonly PostgresWriter _postgresWriter;
     private readonly DatabaseSetting _databaseSetting;
-    private readonly KafkaSetting _kafkaSetting;
     private readonly INotificationClient _notificationClient;
 
     private Dictionary<Guid, IRouteNetworkElement> _lastNetworkElementsNotFeeded = new Dictionary<Guid, IRouteNetworkElement>();
@@ -34,14 +33,12 @@ public class ElementNotFeededValidator : IValidator
         InMemoryNetworkState inMemoryNetworkState,
         PostgresWriter postgresWriter,
         IOptions<DatabaseSetting> databaseSetting,
-        IOptions<KafkaSetting> kafkaSetting,
         INotificationClient notificationClient)
     {
         _logger = logger;
         _inMemoryNetworkState = inMemoryNetworkState;
         _postgresWriter = postgresWriter;
         _databaseSetting = databaseSetting.Value;
-        _kafkaSetting = kafkaSetting.Value;
         _notificationClient = notificationClient;
     }
 

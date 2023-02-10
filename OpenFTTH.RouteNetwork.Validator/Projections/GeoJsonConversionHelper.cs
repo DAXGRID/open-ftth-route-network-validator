@@ -1,7 +1,7 @@
 ﻿using NetTopologySuite.Geometries;
 using System;
 
-namespace OpenFTTH.RouteNetwork.Validator.Handlers;
+namespace OpenFTTH.RouteNetwork.Validator.Projections;
 
 public static class GeoJsonConversionHelper
 {

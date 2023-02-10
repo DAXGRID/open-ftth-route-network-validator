@@ -1,26 +1,46 @@
 ﻿using DAX.ObjectVersioning.Core;
 using Microsoft.Extensions.Logging;
+using OpenFTTH.EventSourcing;
 using OpenFTTH.Events.RouteNetwork;
 using OpenFTTH.RouteNetwork.Validator.Model;
 using OpenFTTH.RouteNetwork.Validator.State;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace OpenFTTH.RouteNetwork.Validator.Handlers
+namespace OpenFTTH.RouteNetwork.Validator.Projections
 {
-    public class RouteNetworkEventHandler : IObserver<RouteNetworkEditOperationOccuredEvent>
+    internal sealed class RouteNetworkProjection : ProjectionBase
     {
-        private readonly ILogger<RouteNetworkEventHandler> _logger;
+        private readonly ILogger<RouteNetworkProjection> _logger;
         private readonly InMemoryNetworkState _inMemoryNetworkState;
         private readonly HashSet<Guid> _alreadyProcessed = new HashSet<Guid>();
 
-        public RouteNetworkEventHandler(ILogger<RouteNetworkEventHandler> logger, InMemoryNetworkState inMemoryNetworkState)
+        public RouteNetworkProjection(
+            ILogger<RouteNetworkProjection> logger,
+            InMemoryNetworkState inMemoryNetworkState)
         {
             _logger = logger;
             _inMemoryNetworkState = inMemoryNetworkState;
+            ProjectEventAsync<RouteNetworkEditOperationOccuredEvent>(Project);
         }
 
-        public void Handle(RouteNetworkEditOperationOccuredEvent request)
+        private Task Project(IEventEnvelope eventEnvelope)
+        {
+            switch (eventEnvelope.Data)
+            {
+                case (RouteNetworkEditOperationOccuredEvent @event):
+                    Handle(@event);
+                    break;
+                default:
+                    throw new ArgumentException(
+                        $"Could not handle type {eventEnvelope.GetType()}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private void Handle(RouteNetworkEditOperationOccuredEvent request)
         {
             var trans = _inMemoryNetworkState.GetTransaction();
 
@@ -66,9 +86,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
-            if (AlreadyProcessed(request.EventId))
-                return;
-
             var envelope = GeoJsonConversionHelper.ConvertFromPointGeoJson(request.Geometry).Envelope.EnvelopeInternal;
 
             transaction.Add(new RouteNode(request.NodeId, request.RouteNodeInfo?.Function, envelope, request.NamingInfo?.Name), ignoreDublicates: true);
@@ -77,9 +94,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
         private void HandleEvent(RouteSegmentAdded request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
-
-            if (AlreadyProcessed(request.EventId))
-                return;
 
             if (!(_inMemoryNetworkState.GetObject(request.FromNodeId) is RouteNode fromNode))
             {
@@ -102,18 +116,12 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
-            if (AlreadyProcessed(request.EventId))
-                return;
-
             transaction.Delete(request.SegmentId, ignoreDublicates: true);
         }
 
         private void HandleEvent(RouteSegmentRemoved request, ITransaction transaction)
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
-
-            if (AlreadyProcessed(request.EventId))
-                return;
 
             transaction.Delete(request.SegmentId, ignoreDublicates: true);
         }
@@ -122,36 +130,7 @@ namespace OpenFTTH.RouteNetwork.Validator.Handlers
         {
             _logger.LogDebug($"Handler got {request.GetType().Name} event seq no: {request.EventSequenceNumber}");
 
-            if (AlreadyProcessed(request.EventId))
-                return;
-
             transaction.Delete(request.NodeId, ignoreDublicates: true);
-        }
-
-        private bool AlreadyProcessed(Guid id)
-        {
-            if (_alreadyProcessed.Contains(id))
-                return true;
-            else
-            {
-                _alreadyProcessed.Add(id);
-                return false;
-            }
-        }
-
-        public void OnCompleted()
-        {
-            // Do Nothing
-        }
-
-        public void OnError(Exception error)
-        {
-            _logger.LogError(error.Message, error.StackTrace);
-        }
-
-        public void OnNext(RouteNetworkEditOperationOccuredEvent value)
-        {
-            Handle(@value);
         }
     }
 }
