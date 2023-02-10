@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace OpenFTTH.RouteNetwork.Validator.State;
 
-public class InMemoryNetworkState
+internal sealed class InMemoryNetworkState
 {
     private readonly ILogger<InMemoryNetworkState> _logger;
 

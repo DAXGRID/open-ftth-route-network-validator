@@ -1,6 +1,6 @@
 ﻿namespace OpenFTTH.RouteNetwork.Validator.Config;
 
-public class DatabaseSetting
+internal sealed record DatabaseSetting
 {
     public string Host { get; set; }
     public string Port { get; set; }
