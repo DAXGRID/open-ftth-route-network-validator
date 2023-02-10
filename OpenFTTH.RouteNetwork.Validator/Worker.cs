@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenFTTH.EventSourcing;
-using OpenFTTH.RouteNetwork.Validator.Projections;
 using OpenFTTH.RouteNetwork.Validator.State;
 using System;
 using System.IO;
@@ -14,18 +13,15 @@ internal sealed class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly InMemoryNetworkState _inMemoryNetworkState;
-    private readonly RouteNetworkProjection _routeNetworkEventHandler;
     private readonly IEventStore _eventStore;
 
     public Worker(
         ILogger<Worker> logger,
         InMemoryNetworkState inMemoryNetworkState,
-        RouteNetworkProjection routeNetworkEventHandler,
         IEventStore eventStore)
     {
         _logger = logger;
         _inMemoryNetworkState = inMemoryNetworkState;
-        _routeNetworkEventHandler = routeNetworkEventHandler;
         _eventStore = eventStore;
     }
 
