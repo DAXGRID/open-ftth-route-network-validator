@@ -37,6 +37,9 @@ internal sealed class Worker : BackgroundService
             _logger.LogInformation("Loading of initial state finished.");
             _inMemoryNetworkState.FinishLoadMode();
 
+            // Cleanup generation 2 objects.
+            GC.Collect(2, GCCollectionMode.Aggressive);
+
             _ = File.Create("/tmp/healthy");
             _logger.LogInformation("Healthy file has been written.");
 
