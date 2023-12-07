@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <UserSecretsId>dotnet-OpenFTTH.RouteNetwork.Validator-8BCAC3C9-D80E-485B-B6CB-22F0A34E9FD7</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DAX.EventProcessing.Dispatcher" Version="2.6.0" />
     <PackageReference Include="DAX.ObjectVersioning.Graph" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="2.0.4" />
     <PackageReference Include="Npgsql" Version="5.0.10" />
     <PackageReference Include="OpenFTTH.NotificationClient" Version="0.3.0" />
