@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace OpenFTTH.RouteNetwork.Validator;
 
-public class Program
+public static class Program
 {
     public static async Task Main(string[] args)
     {
@@ -15,6 +15,6 @@ public class Program
         // in other places.
         host.Services.GetService<IEventStore>()!.ScanForProjections();
 
-        await host.RunAsync();
+        await host.RunAsync().ConfigureAwait(false);
     }
 }

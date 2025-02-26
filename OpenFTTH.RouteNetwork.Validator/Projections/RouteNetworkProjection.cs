@@ -14,7 +14,6 @@ namespace OpenFTTH.RouteNetwork.Validator.Projections
     {
         private readonly ILogger<RouteNetworkProjection> _logger;
         private readonly InMemoryNetworkState _inMemoryNetworkState;
-        private readonly HashSet<Guid> _alreadyProcessed = new HashSet<Guid>();
 
         public RouteNetworkProjection(
             ILogger<RouteNetworkProjection> logger,

@@ -32,7 +32,7 @@ internal sealed class Worker : BackgroundService
         try
         {
             _logger.LogInformation("Starting reading all events.");
-            await _eventStore.DehydrateProjectionsAsync(stoppingToken);
+            await _eventStore.DehydrateProjectionsAsync(stoppingToken).ConfigureAwait(false);
 
             _logger.LogInformation("Loading of initial state finished.");
             _inMemoryNetworkState.FinishLoadMode();
@@ -44,7 +44,7 @@ internal sealed class Worker : BackgroundService
             _logger.LogInformation("Healthy file has been written.");
 
             _logger.LogInformation("Starting listening for new events.");
-            await ListenEvents(LISTEN_EVENTS_INTERVAL, stoppingToken);
+            await ListenEvents(LISTEN_EVENTS_INTERVAL, stoppingToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -57,8 +57,8 @@ internal sealed class Worker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(delay, stoppingToken);
-            await _eventStore.CatchUpAsync(stoppingToken);
+            await Task.Delay(delay, stoppingToken).ConfigureAwait(false);
+            await _eventStore.CatchUpAsync(stoppingToken).ConfigureAwait(false);
         }
     }
 
