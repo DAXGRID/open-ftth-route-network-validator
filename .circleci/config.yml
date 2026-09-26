@@ -9,7 +9,7 @@ executors:
         password: $DOCKER_ACCESSTOKEN
   docker-publisher:
     environment:
-      IMAGE_NAME: openftth/route-network-validator
+      IMAGE_NAME: daxgrid/route-network-validator
     docker:
       - image: cimg/base:current
         auth:
