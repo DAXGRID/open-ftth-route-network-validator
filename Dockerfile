@@ -17,5 +17,6 @@ WORKDIR /app
 
 RUN apk add --no-cache icu-libs krb5-libs
 
-COPY --from=build-env /app/OpenFTTH.RouteNetwork.Validator/out .
+COPY --from=build-env --chown=app:app /app/OpenFTTH.RouteNetwork.Validator/out .
+USER app
 ENTRYPOINT ["dotnet", "OpenFTTH.RouteNetwork.Validator.dll"]
