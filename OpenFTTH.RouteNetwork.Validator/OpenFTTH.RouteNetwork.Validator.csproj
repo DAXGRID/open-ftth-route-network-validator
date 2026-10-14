@@ -13,10 +13,10 @@
     <PackageReference Include="DAX.ObjectVersioning.Graph" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="4.0.0" />
-    <PackageReference Include="OpenFTTH.NotificationClient" Version="0.3.0" />
+    <PackageReference Include="OpenFTTH.NotificationClient" Version="10.1.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
-    <PackageReference Include="OpenFTTH.Events" Version="10.0.0" />
-    <PackageReference Include="OpenFTTH.EventSourcing" Version="10.0.0" />
+    <PackageReference Include="OpenFTTH.Events" Version="10.1.0" />
+    <PackageReference Include="OpenFTTH.EventSourcing" Version="10.1.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
